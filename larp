@@ -1,7 +1,7 @@
--- =========================================================
--- UNIVERSAL AVATAR STEALER & ACCESSORY MANAGER (FULL OVERWRITE)
--- CREATED BY HANZ - FULL AVATAR OVERWRITE & STRICT USERNAME
--- =========================================================
+-- ====================================================================================
+-- R6 / R15 / CUSTOM RIG ULTIMATE ACCESSORY MANAGER & AVATAR STEALER GUI (FULL OVERWRITE)
+-- CREATED BY HANZ - MODERN LUXURY EDITION (OPTIMIZED & FULLY EXECUTABLE)
+-- ====================================================================================
 
 local Players = game:GetService("Players")
 local UserInputService = game:GetService("UserInputService")
@@ -22,7 +22,9 @@ ScreenGui.Name = "HanzAccessoryGui"
 ScreenGui.ResetOnSpawn = false
 ScreenGui.Parent = PlayerGui
 
--- NOTIFIKASI SYSTEM (POJOK KANAN BAWAH)
+-- ====================================================================================
+-- NOTIFICATION SYSTEM (BOTTOM RIGHT CORNER)
+-- ====================================================================================
 local NotificationHolder = Instance.new("Frame")
 NotificationHolder.Name = "NotificationHolder"
 NotificationHolder.Size = UDim2.new(0, 260, 0, 300)
@@ -72,7 +74,9 @@ local function showNotification(message, duration)
     end)
 end
 
--- Main Frame (Landscape Layout Mobile Friendly)
+-- ====================================================================================
+-- MAIN GUI FRAME (LANDSCAPE MOBILE FRIENDLY - MODERN DESIGN)
+-- ====================================================================================
 local MainFrame = Instance.new("Frame")
 MainFrame.Name = "MainFrame"
 MainFrame.Size = UDim2.new(0, 520, 0, 270)
@@ -165,7 +169,7 @@ local Corner1 = Instance.new("UICorner")
 Corner1.CornerRadius = UDim.new(0, 5)
 Corner1.Parent = HeadlessBtn
 
--- Steal Avatar Section
+-- Steal Avatar Section (Strict Real Username Matching + Full Overwrite)
 local StealUserBox = Instance.new("TextBox")
 StealUserBox.Size = UDim2.new(0.68, 0, 0, 22)
 StealUserBox.Position = UDim2.new(0, 0, 0, 26)
@@ -428,6 +432,7 @@ local DelCorner = Instance.new("UICorner")
 DelCorner.CornerRadius = UDim.new(0, 4)
 DelCorner.Parent = DeleteAccBtn
 
+-- Touch & Mouse Dragging Controller
 local dragging, dragInput, dragStart, startPos
 TitleBar.InputBegan:Connect(function(input)
     if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
@@ -465,10 +470,9 @@ MinimizeBtn.MouseButton1Click:Connect(function()
     end
 end)
 
--- =========================================================
--- LOGIC ENGINE: UNIVERSAL RIG & BRUTAL AVATAR STEALER
--- =========================================================
-
+-- ====================================================================================
+-- LOGIC ENGINE: UNIVERSAL RIG, ATTACHMENT DETECTION & FULL AVATAR OVERWRITE
+-- ====================================================================================
 local HeadlessActive = false
 local activeAccessories = {}
 local savedPresets = {}
@@ -533,7 +537,8 @@ local function findUniversalTargetPart(char, accessoryItem)
                 for _, child in pairs(part:GetChildren()) do
                     if child:IsA("Attachment") and child.Name == attName then
                         return part
-                                    end
+                    end
+                end
             end
         end
     end
@@ -652,19 +657,16 @@ local function spawnAccessoryWithData(assetId, savedC0Matrix, scaleTable)
     updateStatusUI()
 end
 
--- CLEAR AVATAR LAMA SEBELUM TIMPA AVATAR BARU
 local function clearCurrentCharacterAvatar()
     local char = LocalPlayer.Character
     if not char then return end
 
-    -- Hapus semua aksesoris, pakaian, body colors, dan graphic yang menempel di karakter
     for _, child in ipairs(char:GetChildren()) do
         if child:IsA("Accessory") or child:IsA("Hat") or child:IsA("Shirt") or child:IsA("Pants") or child:IsA("ShirtGraphic") or child:IsA("BodyColors") then
             pcall(function() child:Destroy() end)
         end
     end
 
-    -- Clear tabel aksesoris aktif
     for _, acc in ipairs(activeAccessories) do
         if acc.model then
             pcall(function()
@@ -678,12 +680,11 @@ local function clearCurrentCharacterAvatar()
     updateStatusUI()
 end
 
--- FITUR STEAL AVATAR FULL OVERWRITE (STRICT USERNAME ONLY)
 local function stealPlayerAvatar(targetInput)
     local targetUserId = nil
     local targetUsername = ""
 
-    -- Strictly match Username Asli (Ignore DisplayName)
+    -- Strictly match real username, ignoring display names
     for _, p in ipairs(Players:GetPlayers()) do
         if string.lower(p.Name) == string.lower(targetInput) then
             targetUserId = p.UserId
@@ -692,7 +693,6 @@ local function stealPlayerAvatar(targetInput)
         end
     end
 
-    -- Jika target tidak ada di server, cari via API Web Roblox strictly by Username
     if not targetUserId then
         local success, fetchedId = pcall(function()
             return Players:GetUserIdFromNameAsync(targetInput)
@@ -708,28 +708,24 @@ local function stealPlayerAvatar(targetInput)
         return
     end
 
-    showNotification("Mulai mengambil seluruh avatar: " .. targetUsername, 3)
+    showNotification("Mengambil seluruh avatar: " .. targetUsername, 3)
 
-    -- Fetch HumanoidDescription dari target
     local success, humDesc = pcall(function()
         return Players:GetHumanoidDescriptionFromUserId(targetUserId)
     end)
 
     if success and humDesc then
-        -- Hapus total avatar & aksesoris lama terlebih dahulu
         clearCurrentCharacterAvatar()
 
         local char = LocalPlayer.Character
         local humanoid = char and char:FindFirstChildOfClass("Humanoid")
 
-        -- Terapkan HumanoidDescription ke karakter lokal (Pakaian, Body Colors, Face, Animations)
         if humanoid then
             pcall(function()
                 humanoid:ApplyDescription(humDesc)
             end)
         end
 
-        -- Extract ID Aksesoris untuk dimasukkan ke sistem tracking GUI
         local accessoriesToLoad = {}
         local function extractIdsFromProperty(propString)
             if propString and propString ~= "" then
@@ -751,14 +747,13 @@ local function stealPlayerAvatar(targetInput)
         local totalCount = 0
         for _, assetId in ipairs(accessoriesToLoad) do
             totalCount = totalCount + 1
-            showNotification("Mengambil id " .. targetUsername .. " [" .. assetId .. "]", 3)
+            showNotification("Mengambil id [" .. assetId .. "]", 3)
             spawnAccessoryWithData(assetId, nil, nil)
             task.wait(0.15)
         end
 
-        showNotification("Selesai menimpa avatar penuh milik " .. targetUsername .. "!", 4)
+        showNotification("Selesai menimpa avatar penuh " .. targetUsername .. "!", 4)
     else
-        -- Fallback jika API Roblox diblokir server: Scan dari karakter player langsung di server
         local targetPlayer = Players:GetPlayerByUserId(targetUserId)
         if targetPlayer and targetPlayer.Character then
             clearCurrentCharacterAvatar()
@@ -766,7 +761,6 @@ local function stealPlayerAvatar(targetInput)
             local targetChar = targetPlayer.Character
             local char = LocalPlayer.Character
 
-            -- Copy Shirt, Pants, Face, Graphic
             for _, obj in ipairs(targetChar:GetChildren()) do
                 if obj:IsA("Shirt") or obj:IsA("Pants") or obj:IsA("ShirtGraphic") or obj:IsA("BodyColors") then
                     local clone = obj:Clone()
@@ -790,32 +784,18 @@ local function stealPlayerAvatar(targetInput)
 
                         if assetId then
                             count = count + 1
-                            showNotification("Mengambil id " .. targetUsername .. " [" .. assetId .. "]", 3)
+                            showNotification("Mengambil id [" .. assetId .. "]", 3)
                             spawnAccessoryWithData(assetId, nil, nil)
                             task.wait(0.15)
                         end
                     end
                 end
             end
-            showNotification("Selesai menimpa avatar penuh milik " .. targetUsername .. "!", 4)
+            showNotification("Selesai menimpa avatar penuh " .. targetUsername .. "!", 4)
         else
             showNotification("Gagal mengambil data avatar target!", 4)
         end
     end
-end
-
-local function clearAllActiveAccessories()
-    for _, acc in ipairs(activeAccessories) do
-        if acc.model then
-            pcall(function()
-                acc.model:ClearAllChildren()
-                acc.model:Destroy()
-            end)
-        end
-    end
-    activeAccessories = {}
-    selectedIndex = 0
-    updateStatusUI()
 end
 
 local function savePresetsToDisk()
@@ -855,7 +835,7 @@ local function refreshPresetListUI()
         loadBtn.Parent = itemFrame
 
         loadBtn.MouseButton1Click:Connect(function()
-            clearAllActiveAccessories()
+            clearCurrentCharacterAvatar()
             for _, accInfo in ipairs(presetData) do
                 spawnAccessoryWithData(tonumber(accInfo.id) or accInfo.id, accInfo.c0, accInfo.scale)
             end
@@ -1053,7 +1033,7 @@ ScaleDownBtn.MouseButton1Click:Connect(function()
         local entry = activeAccessories[selectedIndex]
         if entry.part then
             local mesh = entry.part:FindFirstChildOfClass("SpecialMesh")
-            if mesh then mesh.Scale = mesh.Scale * 0.9 elseif entry.part:IsA("MeshPart") then entry.part.Size = entry.part.Size* 0.9 elseif entry.part:IsA("MeshPart") then entry.part.Size = entry.part.Size * 0.9 end
+            if mesh then mesh.Scale = mesh.Scale * 0.9 elseif entry.part:IsA("MeshPart") then entry.part.Size = entry.part.Size * 0.9 end
         end
     end
 end)
