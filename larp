@@ -1,6 +1,6 @@
 -- =========================================================
--- R6 / R15 / CUSTOM RIG ULTIMATE MANAGER & AVATAR STEALER
--- CREATED BY HANZ - PERFECT BRUTAL FIXED EDITION
+-- UNIVERSAL AVATAR STEALER & ACCESSORY MANAGER (BRUTAL FIX)
+-- CREATED BY HANZ - 100% WORKING ALL RIGS (R6, R15, MAP RIG)
 -- =========================================================
 
 local Players = game:GetService("Players")
@@ -21,6 +21,56 @@ local ScreenGui = Instance.new("ScreenGui")
 ScreenGui.Name = "HanzAccessoryGui"
 ScreenGui.ResetOnSpawn = false
 ScreenGui.Parent = PlayerGui
+
+-- NOTIFIKASI SYSTEM (POJOK KANAN BAWAH)
+local NotificationHolder = Instance.new("Frame")
+NotificationHolder.Name = "NotificationHolder"
+NotificationHolder.Size = UDim2.new(0, 260, 0, 300)
+NotificationHolder.Position = UDim2.new(1, -270, 1, -310)
+NotificationHolder.BackgroundTransparency = 1
+NotificationHolder.Parent = ScreenGui
+
+local NotificationLayout = Instance.new("UIListLayout")
+NotificationLayout.SortOrder = Enum.SortOrder.LayoutOrder
+NotificationLayout.VerticalAlignment = Enum.VerticalAlignment.Bottom
+NotificationLayout.Padding = UDim.new(0, 5)
+NotificationLayout.Parent = NotificationHolder
+
+local function showNotification(message, duration)
+    duration = duration or 3
+    local NotifFrame = Instance.new("Frame")
+    NotifFrame.Size = UDim2.new(1, 0, 0, 35)
+    NotifFrame.BackgroundColor3 = Color3.fromRGB(15, 15, 22)
+    NotifFrame.BorderColor3 = Color3.fromRGB(80, 255, 120)
+    NotifFrame.BorderSizePixel = 1
+    NotifFrame.Parent = NotificationHolder
+
+    local NotifCorner = Instance.new("UICorner")
+    NotifCorner.CornerRadius = UDim.new(0, 6)
+    NotifCorner.Parent = NotifFrame
+
+    local NotifLabel = Instance.new("TextLabel")
+    NotifLabel.Size = UDim2.new(1, -12, 1, 0)
+    NotifLabel.Position = UDim2.new(0, 6, 0, 0)
+    NotifLabel.BackgroundTransparency = 1
+    NotifLabel.Text = message
+    NotifLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+    NotifLabel.TextSize = 9
+    NotifLabel.Font = Enum.Font.GothamBold
+    NotifLabel.TextWrapped = true
+    NotifLabel.TextXAlignment = Enum.TextXAlignment.Left
+    NotifLabel.Parent = NotifFrame
+
+    task.spawn(function()
+        task.wait(duration)
+        for i = 0, 1, 0.1 do
+            NotifFrame.BackgroundTransparency = i
+            NotifLabel.TextTransparency = i
+            task.wait(0.02)
+        end
+        NotifFrame:Destroy()
+    end)
+end
 
 -- Main Frame (Landscape Layout Mobile Friendly)
 local MainFrame = Instance.new("Frame")
@@ -84,21 +134,21 @@ ContentFrame.Position = UDim2.new(0, 0, 0, 28)
 ContentFrame.BackgroundTransparency = 1
 ContentFrame.Parent = MainFrame
 
--- Left Column Frame (Headless, Steal Avatar, Catalog)
+-- Left Column Frame
 local LeftCol = Instance.new("Frame")
 LeftCol.Size = UDim2.new(0.48, 0, 0.95, 0)
 LeftCol.Position = UDim2.new(0.015, 0, 0.025, 0)
 LeftCol.BackgroundTransparency = 1
 LeftCol.Parent = ContentFrame
 
--- Right Column Frame (Manual Load, Presets, Adjustable Panel)
+-- Right Column Frame
 local RightCol = Instance.new("Frame")
 RightCol.Size = UDim2.new(0.48, 0, 0.95, 0)
 RightCol.Position = UDim2.new(0.505, 0, 0.025, 0)
 RightCol.BackgroundTransparency = 1
 RightCol.Parent = ContentFrame
 
--- Headless Toggle (Left Col Top)
+-- Headless Toggle
 local HeadlessBtn = Instance.new("TextButton")
 HeadlessBtn.Size = UDim2.new(1, 0, 0, 22)
 HeadlessBtn.Position = UDim2.new(0, 0, 0, 0)
@@ -115,7 +165,7 @@ local Corner1 = Instance.new("UICorner")
 Corner1.CornerRadius = UDim.new(0, 5)
 Corner1.Parent = HeadlessBtn
 
--- Steal Avatar Section (Left Col)
+-- Steal Avatar Section
 local StealUserBox = Instance.new("TextBox")
 StealUserBox.Size = UDim2.new(0.68, 0, 0, 22)
 StealUserBox.Position = UDim2.new(0, 0, 0, 26)
@@ -261,7 +311,7 @@ UIList.SortOrder = Enum.SortOrder.LayoutOrder
 UIList.Padding = UDim.new(0, 2)
 UIList.Parent = PresetScroll
 
--- SCROLLABLE ADJUSTMENT PANEL (RIGHT COL BOTTOM)
+-- SCROLLABLE ADJUSTMENT PANEL
 local AdjusterHeader = Instance.new("TextLabel")
 AdjusterHeader.Size = UDim2.new(1, 0, 0, 14)
 AdjusterHeader.Position = UDim2.new(0, 0, 0, 100)
@@ -348,7 +398,6 @@ local function createAdjButton(posX, posY, text, color)
     return btn
 end
 
--- Posisi X, Y, Z
 local XPlusBtn = createAdjButton(0, 30, "X +0.1", Color3.fromRGB(100, 200, 255))
 local XMinBtn  = createAdjButton(0.34, 30, "X -0.1", Color3.fromRGB(100, 200, 255))
 local YPlusBtn = createAdjButton(0, 56, "Y +0.1", Color3.fromRGB(80, 255, 120))
@@ -359,7 +408,6 @@ local ZMinBtn  = createAdjButton(0.34, 82, "Z -0.1", Color3.fromRGB(255, 180, 80
 local ScaleUpBtn   = createAdjButton(0.68, 30, "SCALE +", Color3.fromRGB(255, 100, 255))
 local ScaleDownBtn = createAdjButton(0.68, 56, "SCALE -", Color3.fromRGB(255, 100, 255))
 
--- Rotasi 90 Derajat
 local RotXBtn = createAdjButton(0.68, 82, "ROT X 90", Color3.fromRGB(200, 100, 255))
 local RotYBtn = createAdjButton(0, 108, "ROT Y 90", Color3.fromRGB(200, 100, 255))
 local RotZBtn = createAdjButton(0.34, 108, "ROT Z 90", Color3.fromRGB(200, 100, 255))
@@ -380,7 +428,6 @@ local DelCorner = Instance.new("UICorner")
 DelCorner.CornerRadius = UDim.new(0, 4)
 DelCorner.Parent = DeleteAccBtn
 
--- Touch & Mouse Dragging Controller
 local dragging, dragInput, dragStart, startPos
 TitleBar.InputBegan:Connect(function(input)
     if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
@@ -419,7 +466,7 @@ MinimizeBtn.MouseButton1Click:Connect(function()
 end)
 
 -- =========================================================
--- LOGIC ENGINE: UNIVERSAL RIG (R6, R15, MAP RIG) & STEALER
+-- LOGIC ENGINE: UNIVERSAL RIG & BRUTAL AVATAR STEALER
 -- =========================================================
 
 local HeadlessActive = false
@@ -476,7 +523,6 @@ local function applyScaleToPart(part, scaleTable)
     end
 end
 
--- Deteksi Universal: R6, R15, atau Custom Rig Map
 local function findUniversalTargetPart(char, accessoryItem)
     local handle = accessoryItem:FindFirstChild("Handle") or accessoryItem
     local att = handle:FindFirstChildOfClass("Attachment")
@@ -607,69 +653,100 @@ local function spawnAccessoryWithData(assetId, savedC0Matrix, scaleTable)
     updateStatusUI()
 end
 
--- FITUR STEAL AVATAR PLAYER LAIN (BRUTAL UNIVERSAL SCANNER)
+-- FITUR STEAL AVATAR MENGGUNAKAN API ROBLOX (100% REAL ACCURATE USER ID EXTRACTION)
 local function stealPlayerAvatar(targetInput)
-    local targetPlayer = nil
+    local targetUserId = nil
+    local targetUsername = ""
+
     for _, p in ipairs(Players:GetPlayers()) do
         if string.lower(p.Name) == string.lower(targetInput) or string.lower(p.DisplayName) == string.lower(targetInput) then
-            targetPlayer = p
+            targetUserId = p.UserId
+            targetUsername = p.Name
             break
         end
     end
 
-    if not targetPlayer or not targetPlayer.Character then
-        AccStatusLabel.Text = "Target tidak ditemukan!"
+    if not targetUserId then
+        local success, fetchedId = pcall(function()
+            return Players:GetUserIdFromNameAsync(targetInput)
+        end)
+        if success and fetchedId then
+            targetUserId = fetchedId
+            targetUsername = targetInput
+        end
+    end
+
+    if not targetUserId then
+        showNotification("Target [" .. targetInput .. "] tidak ditemukan!", 4)
         return
     end
 
-    local count = 0
-    for _, obj in ipairs(targetPlayer.Character:GetChildren()) do
-        if obj:IsA("Accessory") or obj:IsA("Hat") then
-            local handle = obj:FindFirstChild("Handle")
-            if handle then
-                local assetId = nil
-                
-                -- Extraction ID dari SpecialMesh
-                local mesh = handle:FindFirstChildOfClass("SpecialMesh")
-                if mesh and mesh.MeshId ~= "" then
-                    assetId = tonumber(string.match(mesh.MeshId, "%d+"))
-                end
-                
-                -- Fallback Extraction ID dari MeshPart
-                if not assetId and handle:IsA("MeshPart") and handle.MeshId ~= "" then
-                    assetId = tonumber(string.match(handle.MeshId, "%d+"))
-                end
+    showNotification("Mulai scan avatar: " .. targetUsername, 3)
 
-                if assetId then
-                    count = count + 1
-                    AccStatusLabel.Text = "Mengambil ID: " .. assetId
-                    spawnAccessoryWithData(assetId, nil, nil)
-                    task.wait(0.15)
-                else
-                    -- Direct Clone Fallback untuk Custom Map/Client Mesh
-                    local clone = obj:Clone()
-                    clone.Parent = LocalPlayer.Character
-                    local handlePart = clone:FindFirstChild("Handle")
-                    if handlePart then
-                        local targetPart = findUniversalTargetPart(LocalPlayer.Character, clone)
-                        local weld = Instance.new("Weld")
-                        weld.Part0 = targetPart
-                        weld.Part1 = handlePart
-                        weld.C0 = CFrame.new(0, 0, 0)
-                        weld.Parent = handlePart
-                        count = count + 1
-                        table.insert(activeAccessories, {
-                            id = "Steal_" .. obj.Name,
-                            model = clone,
-                            part = handlePart,
-                            weld = weld
-                        })
-                    end
+    local success, humDesc = pcall(function()
+        return Players:GetHumanoidDescriptionFromUserId(targetUserId)
+    end)
+
+    if success and humDesc then
+        local accessoriesToLoad = {}
+
+        local function extractIdsFromProperty(propString)
+            if propString and propString ~= "" then
+                for id in string.gmatch(propString, "%d+") do
+                    table.insert(accessoriesToLoad, tonumber(id))
                 end
             end
         end
+
+        extractIdsFromProperty(humDesc.HatAccessory)
+        extractIdsFromProperty(humDesc.HairAccessory)
+        extractIdsFromProperty(humDesc.FaceAccessory)
+        extractIdsFromProperty(humDesc.NeckAccessory)
+        extractIdsFromProperty(humDesc.ShouldersAccessory)
+        extractIdsFromProperty(humDesc.FrontAccessory)
+        extractIdsFromProperty(humDesc.BackAccessory)
+        extractIdsFromProperty(humDesc.WaistAccessory)
+
+        local totalCount = 0
+        for _, assetId in ipairs(accessoriesToLoad) do
+            totalCount = totalCount + 1
+            showNotification("Mengambil id " .. targetUsername .. " [" .. assetId .. "]", 3)
+            spawnAccessoryWithData(assetId, nil, nil)
+            task.wait(0.2)
+        end
+
+        showNotification("Selesai steal " .. totalCount .. " aksesoris milik " .. targetUsername .. "!", 4)
+    else
+        local targetPlayer = Players:GetPlayerByUserId(targetUserId)
+        if targetPlayer and targetPlayer.Character then
+            local count = 0
+            for _, obj in ipairs(targetPlayer.Character:GetChildren()) do
+                if obj:IsA("Accessory") or obj:IsA("Hat") then
+                    local handle = obj:FindFirstChild("Handle")
+                    if handle then
+                        local assetId = nil
+                        local mesh = handle:FindFirstChildOfClass("SpecialMesh")
+                        if mesh and mesh.MeshId ~= "" then
+                            assetId = tonumber(string.match(mesh.MeshId, "%d+"))
+                        end
+                        if not assetId and handle:IsA("MeshPart") and handle.MeshId ~= "" then
+                            assetId = tonumber(string.match(handle.MeshId, "%d+"))
+                        end
+
+                        if assetId then
+                            count = count + 1
+                            showNotification("Mengambil id " .. targetUsername .. " [" .. assetId .. "]", 3)
+                            spawnAccessoryWithData(assetId, nil, nil)
+                            task.wait(0.2)
+                        end
+                    end
+                end
+            end
+            showNotification("Selesai steal " .. count .. " aksesoris!", 4)
+        else
+            showNotification("Gagal mengambil data avatar target!", 4)
+        end
     end
-    AccStatusLabel.Text = "Berhasil steal " .. count .. " item!"
 end
 
 local function clearAllActiveAccessories()
@@ -814,6 +891,7 @@ AddAccessoryBtn.MouseButton1Click:Connect(function()
     local textId = IdTextBox.Text
     if textId ~= "" and tonumber(textId) then
         spawnAccessoryWithData(tonumber(textId), nil, nil)
+        showNotification("Berhasil load ID: " .. textId, 3)
         IdTextBox.Text = ""
     end
 end)
@@ -855,6 +933,7 @@ SavePresetBtn.MouseButton1Click:Connect(function()
         savedPresets[pName] = presetData
         savePresetsToDisk()
         refreshPresetListUI()
+        showNotification("Preset [" .. pName .. "] disimpan!", 3)
         PresetNameBox.Text = ""
     end
 end)
@@ -939,7 +1018,6 @@ DeleteAccBtn.MouseButton1Click:Connect(function()
     end
 end)
 
--- Persistent Auto-Reapply System on Respawn / Reset (Tanpa Kehilangan Ukuran & Posisi C0)
 LocalPlayer.CharacterAdded:Connect(function(newChar)
     task.wait(1.5)
     if HeadlessActive then
