@@ -1,34 +1,36 @@
--- =========================================================
--- R6 ULTIMATE ACCESSORY MANAGER GUI (PERFECT RESPAWN SYNC)
--- CREATED BY HANZ
--- =========================================================
+-- ==============================================================================
+-- R6 / R15 / CUSTOM RIG ULTIMATE UNIVERSAL ACCESSORY & AVATAR STEALER MANAGER
+-- CREATED BY HANZ - ABSOLUTE BRUTAL EDITION
+-- ==============================================================================
 
 local Players = game:GetService("Players")
 local UserInputService = game:GetService("UserInputService")
 local InsertService = game:GetService("InsertService")
 local HttpService = game:GetService("HttpService")
+local RunService = game:GetService("RunService")
+local CoreGui = game:GetService("CoreGui")
 
 local LocalPlayer = Players.LocalPlayer
 local PlayerGui = LocalPlayer:WaitForChild("PlayerGui")
 
-if PlayerGui:FindFirstChild("HanzAccessoryGui") then
-    PlayerGui.HanzAccessoryGui:Destroy()
+if PlayerGui:FindFirstChild("HanzUltimateAccessoryManager") then
+    PlayerGui.HanzUltimateAccessoryManager:Destroy()
 end
 
-local PRESET_FILE_NAME = "R6_AccessoryPresets_Hanz.json"
+local PRESET_FILE_NAME = "Hanz_Universal_Avatar_Presets.json"
 
 local ScreenGui = Instance.new("ScreenGui")
-ScreenGui.Name = "HanzAccessoryGui"
+ScreenGui.Name = "HanzUltimateAccessoryManager"
 ScreenGui.ResetOnSpawn = false
 ScreenGui.Parent = PlayerGui
 
--- Main Frame (Landscape Layout Mobile Friendly)
+-- Main Interface Frame (Landscape Mobile Friendly - 540x310)
 local MainFrame = Instance.new("Frame")
 MainFrame.Name = "MainFrame"
-MainFrame.Size = UDim2.new(0, 520, 0, 270)
-MainFrame.Position = UDim2.new(0.5, -260, 0.5, -135)
-MainFrame.BackgroundColor3 = Color3.fromRGB(15, 15, 20)
-MainFrame.BorderColor3 = Color3.fromRGB(60, 120, 255)
+MainFrame.Size = UDim2.new(0, 540, 0, 310)
+MainFrame.Position = UDim2.new(0.5, -270, 0.5, -155)
+MainFrame.BackgroundColor3 = Color3.fromRGB(12, 12, 16)
+MainFrame.BorderColor3 = Color3.fromRGB(60, 140, 255)
 MainFrame.BorderSizePixel = 1
 MainFrame.Active = true
 MainFrame.ClipsDescendants = true
@@ -42,7 +44,7 @@ MainCorner.Parent = MainFrame
 local TitleBar = Instance.new("Frame")
 TitleBar.Name = "TitleBar"
 TitleBar.Size = UDim2.new(1, 0, 0, 28)
-TitleBar.BackgroundColor3 = Color3.fromRGB(22, 22, 30)
+TitleBar.BackgroundColor3 = Color3.fromRGB(18, 18, 24)
 TitleBar.BorderSizePixel = 0
 TitleBar.Parent = MainFrame
 
@@ -54,9 +56,9 @@ local TitleLabel = Instance.new("TextLabel")
 TitleLabel.Size = UDim2.new(1, -35, 1, 0)
 TitleLabel.Position = UDim2.new(0, 10, 0, 0)
 TitleLabel.BackgroundTransparency = 1
-TitleLabel.Text = "R6 MANAGER - BY HANZ"
+TitleLabel.Text = "HANZ ULTIMATE UNIVERSAL AVATAR & ACCESSORY MANAGER"
 TitleLabel.TextColor3 = Color3.fromRGB(80, 255, 120)
-TitleLabel.TextSize = 11
+TitleLabel.TextSize = 10
 TitleLabel.Font = Enum.Font.GothamBold
 TitleLabel.TextXAlignment = Enum.TextXAlignment.Left
 TitleLabel.Parent = TitleBar
@@ -64,7 +66,7 @@ TitleLabel.Parent = TitleBar
 local MinimizeBtn = Instance.new("TextButton")
 MinimizeBtn.Size = UDim2.new(0, 22, 0, 22)
 MinimizeBtn.Position = UDim2.new(1, -26, 0, 3)
-MinimizeBtn.BackgroundColor3 = Color3.fromRGB(30, 30, 42)
+MinimizeBtn.BackgroundColor3 = Color3.fromRGB(28, 28, 38)
 MinimizeBtn.BorderColor3 = Color3.fromRGB(70, 130, 255)
 MinimizeBtn.BorderSizePixel = 1
 MinimizeBtn.Text = "-"
@@ -74,7 +76,7 @@ MinimizeBtn.Font = Enum.Font.GothamBold
 MinimizeBtn.Parent = TitleBar
 
 local MinCorner = Instance.new("UICorner")
-MinCorner.CornerRadius = UDim.new(0, 5)
+MinCorner.CornerRadius = UDim.new(0, 4)
 MinCorner.Parent = MinimizeBtn
 
 local ContentFrame = Instance.new("Frame")
@@ -84,101 +86,144 @@ ContentFrame.Position = UDim2.new(0, 0, 0, 28)
 ContentFrame.BackgroundTransparency = 1
 ContentFrame.Parent = MainFrame
 
--- Left Column Frame (Catalog & Headless Toggle)
+-- Layout Columns: Left Column (Catalog, Stealer, Headless), Right Column (Manual ID, Presets, Adjuster)
 local LeftCol = Instance.new("Frame")
-LeftCol.Size = UDim2.new(0.48, 0, 0.95, 0)
-LeftCol.Position = UDim2.new(0.015, 0, 0.025, 0)
+LeftCol.Size = UDim2.new(0.48, 0, 0.96, 0)
+LeftCol.Position = UDim2.new(0.015, 0, 0.02, 0)
 LeftCol.BackgroundTransparency = 1
 LeftCol.Parent = ContentFrame
 
--- Right Column Frame (Controls, Presets & Adjustable Panel)
 local RightCol = Instance.new("Frame")
-RightCol.Size = UDim2.new(0.48, 0, 0.95, 0)
-RightCol.Position = UDim2.new(0.505, 0, 0.025, 0)
+RightCol.Size = UDim2.new(0.48, 0, 0.96, 0)
+RightCol.Position = UDim2.new(0.505, 0, 0.02, 0)
 RightCol.BackgroundTransparency = 1
 RightCol.Parent = ContentFrame
 
--- Headless Toggle (Left Col Top)
+-- Headless Toggle
 local HeadlessBtn = Instance.new("TextButton")
-HeadlessBtn.Size = UDim2.new(1, 0, 0, 24)
+HeadlessBtn.Size = UDim2.new(1, 0, 0, 22)
 HeadlessBtn.Position = UDim2.new(0, 0, 0, 0)
-HeadlessBtn.BackgroundColor3 = Color3.fromRGB(25, 25, 35)
+HeadlessBtn.BackgroundColor3 = Color3.fromRGB(22, 22, 30)
 HeadlessBtn.BorderColor3 = Color3.fromRGB(60, 120, 255)
 HeadlessBtn.BorderSizePixel = 1
 HeadlessBtn.Text = "HEADLESS: OFF"
 HeadlessBtn.TextColor3 = Color3.fromRGB(255, 80, 80)
-HeadlessBtn.TextSize = 10
+HeadlessBtn.TextSize = 9
 HeadlessBtn.Font = Enum.Font.GothamSemibold
 HeadlessBtn.Parent = LeftCol
 
 local Corner1 = Instance.new("UICorner")
-Corner1.CornerRadius = UDim.new(0, 5)
+Corner1.CornerRadius = UDim.new(0, 4)
 Corner1.Parent = HeadlessBtn
+
+-- Steal Avatar Section
+local StealHeader = Instance.new("TextLabel")
+StealHeader.Size = UDim2.new(1, 0, 0, 16)
+StealHeader.Position = UDim2.new(0, 0, 0, 26)
+StealHeader.BackgroundTransparency = 1
+StealHeader.Text = "--- AMBIL AVATAR PLAYER LAIN ---"
+StealHeader.TextColor3 = Color3.fromRGB(180, 180, 200)
+StealHeader.TextSize = 8
+StealHeader.Font = Enum.Font.GothamBold
+StealHeader.Parent = LeftCol
+
+local TargetUserBox = Instance.new("TextBox")
+TargetUserBox.Size = UDim2.new(0.68, 0, 0, 22)
+TargetUserBox.Position = UDim2.new(0, 0, 0, 44)
+TargetUserBox.BackgroundColor3 = Color3.fromRGB(10, 10, 15)
+TargetUserBox.BorderColor3 = Color3.fromRGB(80, 80, 110)
+TargetUserBox.BorderSizePixel = 1
+TargetUserBox.PlaceholderText = "Nama Player / Display..."
+TargetUserBox.PlaceholderColor3 = Color3.fromRGB(120, 120, 140)
+TargetUserBox.Text = ""
+TargetUserBox.TextColor3 = Color3.fromRGB(255, 255, 255)
+TargetUserBox.TextSize = 9
+TargetUserBox.Font = Enum.Font.GothamMedium
+TargetUserBox.Parent = LeftCol
+
+local StealCorner = Instance.new("UICorner")
+StealCorner.CornerRadius = UDim.new(0, 4)
+StealCorner.Parent = TargetUserBox
+
+local StealAvatarBtn = Instance.new("TextButton")
+StealAvatarBtn.Size = UDim2.new(0.30, 0, 0, 22)
+StealAvatarBtn.Position = UDim2.new(0.70, 0, 0, 44)
+StealAvatarBtn.BackgroundColor3 = Color3.fromRGB(30, 30, 45)
+StealAvatarBtn.BorderColor3 = Color3.fromRGB(80, 255, 120)
+StealAvatarBtn.BorderSizePixel = 1
+StealAvatarBtn.Text = "STEAL"
+StealAvatarBtn.TextColor3 = Color3.fromRGB(80, 255, 120)
+StealAvatarBtn.TextSize = 9
+StealAvatarBtn.Font = Enum.Font.GothamBold
+StealAvatarBtn.Parent = LeftCol
+
+local StealBtnCorner = Instance.new("UICorner")
+StealBtnCorner.CornerRadius = UDim.new(0, 4)
+StealBtnCorner.Parent = StealAvatarBtn
 
 -- Official Catalog Section
 local CatalogHeader = Instance.new("TextLabel")
-CatalogHeader.Size = UDim2.new(1, 0, 0, 18)
-CatalogHeader.Position = UDim2.new(0, 0, 0, 28)
+CatalogHeader.Size = UDim2.new(1, 0, 0, 16)
+CatalogHeader.Position = UDim2.new(0, 0, 0, 70)
 CatalogHeader.BackgroundTransparency = 1
-CatalogHeader.Text = "--- KATALOG OFFICIAL EFEK (ROBLOX) ---"
+CatalogHeader.Text = "--- KATALOG EFEK & AKSESORIS ---"
 CatalogHeader.TextColor3 = Color3.fromRGB(180, 180, 200)
-CatalogHeader.TextSize = 9
+CatalogHeader.TextSize = 8
 CatalogHeader.Font = Enum.Font.GothamBold
 CatalogHeader.Parent = LeftCol
 
 local CatalogScroll = Instance.new("ScrollingFrame")
-CatalogScroll.Size = UDim2.new(1, 0, 1, -48)
-CatalogScroll.Position = UDim2.new(0, 0, 0, 48)
-CatalogScroll.BackgroundColor3 = Color3.fromRGB(10, 10, 14)
+CatalogScroll.Size = UDim2.new(1, 0, 1, -90)
+CatalogScroll.Position = UDim2.new(0, 0, 0, 90)
+CatalogScroll.BackgroundColor3 = Color3.fromRGB(8, 8, 12)
 CatalogScroll.BorderColor3 = Color3.fromRGB(40, 40, 60)
 CatalogScroll.BorderSizePixel = 1
 CatalogScroll.CanvasSize = UDim2.new(0, 0, 0, 0)
-CatalogScroll.ScrollBarThickness = 4
+CatalogScroll.ScrollBarThickness = 3
 CatalogScroll.Parent = LeftCol
 
 local CatalogUIList = Instance.new("UIListLayout")
 CatalogUIList.SortOrder = Enum.SortOrder.LayoutOrder
-CatalogUIList.Padding = UDim.new(0, 3)
+CatalogUIList.Padding = UDim.new(0, 2)
 CatalogUIList.Parent = CatalogScroll
 
--- Manual Load Input (Right Col Top)
+-- Right Column Elements: Manual ID, Preset Manager, and Adjuster Panel
 local IdTextBox = Instance.new("TextBox")
-IdTextBox.Size = UDim2.new(0.65, 0, 0, 22)
+IdTextBox.Size = UDim2.new(0.68, 0, 0, 22)
 IdTextBox.Position = UDim2.new(0, 0, 0, 0)
 IdTextBox.BackgroundColor3 = Color3.fromRGB(10, 10, 15)
 IdTextBox.BorderColor3 = Color3.fromRGB(80, 80, 110)
 IdTextBox.BorderSizePixel = 1
-IdTextBox.PlaceholderText = "ID Aksesoris..."
+IdTextBox.PlaceholderText = "ID Aksesoris / Item..."
 IdTextBox.PlaceholderColor3 = Color3.fromRGB(120, 120, 140)
 IdTextBox.Text = ""
 IdTextBox.TextColor3 = Color3.fromRGB(255, 255, 255)
-IdTextBox.TextSize = 10
+IdTextBox.TextSize = 9
 IdTextBox.Font = Enum.Font.GothamMedium
 IdTextBox.Parent = RightCol
 
 local Corner3 = Instance.new("UICorner")
-Corner3.CornerRadius = UDim.new(0, 5)
+Corner3.CornerRadius = UDim.new(0, 4)
 Corner3.Parent = IdTextBox
 
 local AddAccessoryBtn = Instance.new("TextButton")
-AddAccessoryBtn.Size = UDim2.new(0.32, 0, 0, 22)
-AddAccessoryBtn.Position = UDim2.new(0.68, 0, 0, 0)
-AddAccessoryBtn.BackgroundColor3 = Color3.fromRGB(25, 25, 35)
+AddAccessoryBtn.Size = UDim2.new(0.30, 0, 0, 22)
+AddAccessoryBtn.Position = UDim2.new(0.70, 0, 0, 0)
+AddAccessoryBtn.BackgroundColor3 = Color3.fromRGB(22, 22, 32)
 AddAccessoryBtn.BorderColor3 = Color3.fromRGB(60, 120, 255)
 AddAccessoryBtn.BorderSizePixel = 1
-AddAccessoryBtn.Text = "LOAD ACC"
+AddAccessoryBtn.Text = "LOAD"
 AddAccessoryBtn.TextColor3 = Color3.fromRGB(80, 255, 120)
 AddAccessoryBtn.TextSize = 9
 AddAccessoryBtn.Font = Enum.Font.GothamBold
 AddAccessoryBtn.Parent = RightCol
 
 local Corner4 = Instance.new("UICorner")
-Corner4.CornerRadius = UDim.new(0, 5)
+Corner4.CornerRadius = UDim.new(0, 4)
 Corner4.Parent = AddAccessoryBtn
 
--- Preset Outfit Section (Right Col Middle)
 local PresetNameBox = Instance.new("TextBox")
-PresetNameBox.Size = UDim2.new(0.65, 0, 0, 22)
+PresetNameBox.Size = UDim2.new(0.68, 0, 0, 22)
 PresetNameBox.Position = UDim2.new(0, 0, 0, 26)
 PresetNameBox.BackgroundColor3 = Color3.fromRGB(10, 10, 15)
 PresetNameBox.BorderColor3 = Color3.fromRGB(80, 80, 110)
@@ -187,34 +232,34 @@ PresetNameBox.PlaceholderText = "Nama Preset..."
 PresetNameBox.PlaceholderColor3 = Color3.fromRGB(120, 120, 140)
 PresetNameBox.Text = ""
 PresetNameBox.TextColor3 = Color3.fromRGB(255, 255, 255)
-PresetNameBox.TextSize = 10
+PresetNameBox.TextSize = 9
 PresetNameBox.Font = Enum.Font.GothamMedium
 PresetNameBox.Parent = RightCol
 
 local PresetCorner = Instance.new("UICorner")
-PresetCorner.CornerRadius = UDim.new(0, 5)
+PresetCorner.CornerRadius = UDim.new(0, 4)
 PresetCorner.Parent = PresetNameBox
 
 local SavePresetBtn = Instance.new("TextButton")
-SavePresetBtn.Size = UDim2.new(0.32, 0, 0, 22)
-SavePresetBtn.Position = UDim2.new(0.68, 0, 0, 26)
-SavePresetBtn.BackgroundColor3 = Color3.fromRGB(25, 25, 35)
+SavePresetBtn.Size = UDim2.new(0.30, 0, 0, 22)
+SavePresetBtn.Position = UDim2.new(0.70, 0, 0, 26)
+SavePresetBtn.BackgroundColor3 = Color3.fromRGB(22, 22, 32)
 SavePresetBtn.BorderColor3 = Color3.fromRGB(80, 255, 120)
 SavePresetBtn.BorderSizePixel = 1
-SavePresetBtn.Text = "SIMPAN SET"
+SavePresetBtn.Text = "SIMPAN"
 SavePresetBtn.TextColor3 = Color3.fromRGB(80, 255, 120)
 SavePresetBtn.TextSize = 9
 SavePresetBtn.Font = Enum.Font.GothamBold
 SavePresetBtn.Parent = RightCol
 
 local SavePCorner = Instance.new("UICorner")
-SavePCorner.CornerRadius = UDim.new(0, 5)
+SavePCorner.CornerRadius = UDim.new(0, 4)
 SavePCorner.Parent = SavePresetBtn
 
 local PresetScroll = Instance.new("ScrollingFrame")
 PresetScroll.Size = UDim2.new(1, 0, 0, 45)
 PresetScroll.Position = UDim2.new(0, 0, 0, 52)
-PresetScroll.BackgroundColor3 = Color3.fromRGB(10, 10, 14)
+PresetScroll.BackgroundColor3 = Color3.fromRGB(8, 8, 12)
 PresetScroll.BorderColor3 = Color3.fromRGB(40, 40, 60)
 PresetScroll.BorderSizePixel = 1
 PresetScroll.CanvasSize = UDim2.new(0, 0, 0, 0)
@@ -226,12 +271,11 @@ UIList.SortOrder = Enum.SortOrder.LayoutOrder
 UIList.Padding = UDim.new(0, 2)
 UIList.Parent = PresetScroll
 
--- SCROLLABLE ADJUSTMENT PANEL (RIGHT COL BOTTOM)
 local AdjusterHeader = Instance.new("TextLabel")
 AdjusterHeader.Size = UDim2.new(1, 0, 0, 14)
 AdjusterHeader.Position = UDim2.new(0, 0, 0, 100)
 AdjusterHeader.BackgroundTransparency = 1
-AdjusterHeader.Text = "--- ATUR POSISI, ROTASI & SKALA ---"
+AdjusterHeader.Text = "--- KONTROL POSISI, ROTASI & SKALA ---"
 AdjusterHeader.TextColor3 = Color3.fromRGB(180, 180, 200)
 AdjusterHeader.TextSize = 8
 AdjusterHeader.Font = Enum.Font.GothamBold
@@ -240,10 +284,10 @@ AdjusterHeader.Parent = RightCol
 local AccStatusLabel = Instance.new("TextLabel")
 AccStatusLabel.Size = UDim2.new(1, 0, 0, 18)
 AccStatusLabel.Position = UDim2.new(0, 0, 0, 116)
-AccStatusLabel.BackgroundColor3 = Color3.fromRGB(20, 20, 28)
+AccStatusLabel.BackgroundColor3 = Color3.fromRGB(18, 18, 26)
 AccStatusLabel.BorderColor3 = Color3.fromRGB(50, 50, 70)
 AccStatusLabel.BorderSizePixel = 1
-AccStatusLabel.Text = "Aktif: [ Belum dipilih ]"
+AccStatusLabel.Text = "Aktif: [ Belum Dipilih ]"
 AccStatusLabel.TextColor3 = Color3.fromRGB(255, 220, 100)
 AccStatusLabel.TextSize = 9
 AccStatusLabel.Font = Enum.Font.GothamMedium
@@ -256,20 +300,20 @@ StatusCorner.Parent = AccStatusLabel
 local ControlScroll = Instance.new("ScrollingFrame")
 ControlScroll.Size = UDim2.new(1, 0, 1, -138)
 ControlScroll.Position = UDim2.new(0, 0, 0, 138)
-ControlScroll.BackgroundColor3 = Color3.fromRGB(10, 10, 14)
+ControlScroll.BackgroundColor3 = Color3.fromRGB(8, 8, 12)
 ControlScroll.BorderColor3 = Color3.fromRGB(40, 40, 60)
 ControlScroll.BorderSizePixel = 1
-ControlScroll.CanvasSize = UDim2.new(0, 0, 0, 170)
-ControlScroll.ScrollBarThickness = 4
+ControlScroll.CanvasSize = UDim2.new(0, 0, 0, 160)
+ControlScroll.ScrollBarThickness = 3
 ControlScroll.Parent = RightCol
 
 local PrevAccBtn = Instance.new("TextButton")
-PrevAccBtn.Size = UDim2.new(0.48, 0, 0, 22)
-PrevAccBtn.Position = UDim2.new(0, 0, 0, 4)
-PrevAccBtn.BackgroundColor3 = Color3.fromRGB(30, 30, 42)
+PrevAccBtn.Size = UDim2.new(0.48, 0, 0, 20)
+PrevAccBtn.Position = UDim2.new(0, 0, 0, 2)
+PrevAccBtn.BackgroundColor3 = Color3.fromRGB(24, 24, 34)
 PrevAccBtn.BorderColor3 = Color3.fromRGB(70, 130, 255)
 PrevAccBtn.BorderSizePixel = 1
-PrevAccBtn.Text = "< PREV ACC"
+PrevAccBtn.Text = "< PREV"
 PrevAccBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
 PrevAccBtn.TextSize = 9
 PrevAccBtn.Font = Enum.Font.GothamBold
@@ -280,12 +324,12 @@ PrevCorner.CornerRadius = UDim.new(0, 4)
 PrevCorner.Parent = PrevAccBtn
 
 local NextAccBtn = Instance.new("TextButton")
-NextAccBtn.Size = UDim2.new(0.48, 0, 0, 22)
-NextAccBtn.Position = UDim2.new(0.50, 0, 0, 4)
-NextAccBtn.BackgroundColor3 = Color3.fromRGB(30, 30, 42)
+NextAccBtn.Size = UDim2.new(0.48, 0, 0, 20)
+NextAccBtn.Position = UDim2.new(0.52, 0, 0, 2)
+NextAccBtn.BackgroundColor3 = Color3.fromRGB(24, 24, 34)
 NextAccBtn.BorderColor3 = Color3.fromRGB(70, 130, 255)
 NextAccBtn.BorderSizePixel = 1
-NextAccBtn.Text = "NEXT ACC >"
+NextAccBtn.Text = "NEXT >"
 NextAccBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
 NextAccBtn.TextSize = 9
 NextAccBtn.Font = Enum.Font.GothamBold
@@ -297,14 +341,14 @@ NextCorner.Parent = NextAccBtn
 
 local function createAdjButton(posX, posY, text, color)
     local btn = Instance.new("TextButton")
-    btn.Size = UDim2.new(0.31, 0, 0, 22)
+    btn.Size = UDim2.new(0.31, 0, 0, 20)
     btn.Position = UDim2.new(posX, 0, 0, posY)
-    btn.BackgroundColor3 = Color3.fromRGB(25, 25, 35)
+    btn.BackgroundColor3 = Color3.fromRGB(20, 20, 28)
     btn.BorderColor3 = color
     btn.BorderSizePixel = 1
     btn.Text = text
     btn.TextColor3 = color
-    btn.TextSize = 9
+    btn.TextSize = 8
     btn.Font = Enum.Font.GothamBold
     btn.Parent = ControlScroll
     local c = Instance.new("UICorner")
@@ -313,31 +357,29 @@ local function createAdjButton(posX, posY, text, color)
     return btn
 end
 
--- Posisi X, Y, Z
-local XPlusBtn = createAdjButton(0, 30, "X +0.1", Color3.fromRGB(100, 200, 255))
-local XMinBtn  = createAdjButton(0.34, 30, "X -0.1", Color3.fromRGB(100, 200, 255))
-local YPlusBtn = createAdjButton(0, 56, "Y +0.1", Color3.fromRGB(80, 255, 120))
-local YMinBtn  = createAdjButton(0.34, 56, "Y -0.1", Color3.fromRGB(80, 255, 120))
-local ZPlusBtn = createAdjButton(0, 82, "Z +0.1", Color3.fromRGB(255, 180, 80))
-local ZMinBtn  = createAdjButton(0.34, 82, "Z -0.1", Color3.fromRGB(255, 180, 80))
+local XPlusBtn = createAdjButton(0, 26, "X +0.1", Color3.fromRGB(100, 200, 255))
+local XMinBtn  = createAdjButton(0.34, 26, "X -0.1", Color3.fromRGB(100, 200, 255))
+local YPlusBtn = createAdjButton(0, 50, "Y +0.1", Color3.fromRGB(80, 255, 120))
+local YMinBtn  = createAdjButton(0.34, 50, "Y -0.1", Color3.fromRGB(80, 255, 120))
+local ZPlusBtn = createAdjButton(0, 74, "Z +0.1", Color3.fromRGB(255, 180, 80))
+local ZMinBtn  = createAdjButton(0.34, 74, "Z -0.1", Color3.fromRGB(255, 180, 80))
 
-local ScaleUpBtn   = createAdjButton(0.68, 30, "SCALE +", Color3.fromRGB(255, 100, 255))
-local ScaleDownBtn = createAdjButton(0.68, 56, "SCALE -", Color3.fromRGB(255, 100, 255))
+local ScaleUpBtn   = createAdjButton(0.68, 26, "SCALE +", Color3.fromRGB(255, 100, 255))
+local ScaleDownBtn = createAdjButton(0.68, 50, "SCALE -", Color3.fromRGB(255, 100, 255))
 
--- Rotasi 90 Derajat
-local RotXBtn = createAdjButton(0.68, 82, "ROT X 90", Color3.fromRGB(200, 100, 255))
-local RotYBtn = createAdjButton(0, 108, "ROT Y 90", Color3.fromRGB(200, 100, 255))
-local RotZBtn = createAdjButton(0.34, 108, "ROT Z 90", Color3.fromRGB(200, 100, 255))
+local RotXBtn = createAdjButton(0.68, 74, "ROT X 90", Color3.fromRGB(200, 100, 255))
+local RotYBtn = createAdjButton(0, 98, "ROT Y 90", Color3.fromRGB(200, 100, 255))
+local RotZBtn = createAdjButton(0.34, 98, "ROT Z 90", Color3.fromRGB(200, 100, 255))
 
 local DeleteAccBtn = Instance.new("TextButton")
-DeleteAccBtn.Size = UDim2.new(0.31, 0, 0, 22)
-DeleteAccBtn.Position = UDim2.new(0.68, 0, 0, 108)
-DeleteAccBtn.BackgroundColor3 = Color3.fromRGB(40, 20, 20)
+DeleteAccBtn.Size = UDim2.new(0.31, 0, 0, 20)
+DeleteAccBtn.Position = UDim2.new(0.68, 0, 0, 98)
+DeleteAccBtn.BackgroundColor3 = Color3.fromRGB(35, 15, 15)
 DeleteAccBtn.BorderColor3 = Color3.fromRGB(255, 60, 60)
 DeleteAccBtn.BorderSizePixel = 1
 DeleteAccBtn.Text = "HAPUS"
 DeleteAccBtn.TextColor3 = Color3.fromRGB(255, 80, 80)
-DeleteAccBtn.TextSize = 9
+DeleteAccBtn.TextSize = 8
 DeleteAccBtn.Font = Enum.Font.GothamBold
 DeleteAccBtn.Parent = ControlScroll
 
@@ -345,7 +387,7 @@ local DelCorner = Instance.new("UICorner")
 DelCorner.CornerRadius = UDim.new(0, 4)
 DelCorner.Parent = DeleteAccBtn
 
--- Touch & Mouse Dragging Controller
+-- Window Dragging Functionality
 local dragging, dragInput, dragStart, startPos
 TitleBar.InputBegan:Connect(function(input)
     if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
@@ -357,11 +399,13 @@ TitleBar.InputBegan:Connect(function(input)
         end)
     end
 end)
+
 TitleBar.InputChanged:Connect(function(input)
     if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then
         dragInput = input
     end
 end)
+
 UserInputService.InputChanged:Connect(function(input)
     if input == dragInput and dragging then
         local delta = input.Position - dragStart
@@ -374,18 +418,18 @@ MinimizeBtn.MouseButton1Click:Connect(function()
     isMinimized = not isMinimized
     if isMinimized then
         ContentFrame.Visible = false
-        MainFrame.Size = UDim2.new(0, 520, 0, 28)
+        MainFrame.Size = UDim2.new(0, 540, 0, 28)
         MinimizeBtn.Text = "+"
     else
         ContentFrame.Visible = true
-        MainFrame.Size = UDim2.new(0, 520, 0, 270)
+        MainFrame.Size = UDim2.new(0, 540, 0, 310)
         MinimizeBtn.Text = "-"
     end
 end)
 
--- =========================================================
--- LOGIC ENGINE: DYNAMIC BODY PART & ATTACHMENT DETECTION
--- =========================================================
+-- ==============================================================================
+-- UNIVERSAL RIG, ATTACHMENT, & AVATAR STEALER CORE ENGINE
+-- ==============================================================================
 
 local HeadlessActive = false
 local activeAccessories = {}
@@ -441,8 +485,8 @@ local function applyScaleToPart(part, scaleTable)
     end
 end
 
--- Deteksi Part Target Berdasarkan Attachment bawaan Roblox / Default ke Head
-local function findTargetPartForAccessory(char, accessoryItem)
+-- Universal Body Part Detection supporting R6, R15, and Custom Map Rigs
+local function findUniversalTargetPart(char, accessoryItem)
     local handle = accessoryItem:FindFirstChild("Handle") or accessoryItem
     local att = handle:FindFirstChildOfClass("Attachment")
     if att then
@@ -457,7 +501,8 @@ local function findTargetPartForAccessory(char, accessoryItem)
             end
         end
     end
-    return char:FindFirstChild("Head") or char:FindFirstChild("HumanoidRootPart")
+    -- Fallback hierarchy check for R6 / R15 / Custom
+    return char:FindFirstChild("UpperTorso") or char:FindFirstChild("Torso") or char:FindFirstChild("Head") or char:FindFirstChild("HumanoidRootPart")
 end
 
 local function spawnAccessoryWithData(assetId, savedC0Matrix, scaleTable)
@@ -477,9 +522,9 @@ local function spawnAccessoryWithData(assetId, savedC0Matrix, scaleTable)
             for _, item in pairs(assetModel:GetChildren()) do
                 if item:IsA("Accessory") or item:IsA("Hat") then
                     item.Parent = char
-                    local handle = item:FindFirstChild("Handle")
+                    local handle = item:FindFindChild("Handle")
                     if handle then
-                        local targetPart = findTargetPartForAccessory(char, item)
+                        local targetPart = findUniversalTargetPart(char, item)
                         local weld = handle:FindFirstChildOfClass("Weld") or handle:FindFirstChildOfClass("WeldConstraint")
                         if not weld or not weld:IsA("Weld") then
                             if weld then weld:Destroy() end
@@ -536,7 +581,7 @@ local function spawnAccessoryWithData(assetId, savedC0Matrix, scaleTable)
                         if child:IsA("Accessory") or child:IsA("Hat") then
                             child.Parent = char
                             local handle = child:FindFirstChild("Handle")
-                            local targetPart = findTargetPartForAccessory(char, child)
+                            local targetPart = findUniversalTargetPart(char, child)
                             local weld = handle and (handle:FindFirstChildOfClass("Weld") or handle:FindFirstChildOfClass("WeldConstraint"))
                             if handle and (not weld or not weld:IsA("Weld")) then
                                 if weld then weld:Destroy() end
@@ -572,6 +617,51 @@ local function spawnAccessoryWithData(assetId, savedC0Matrix, scaleTable)
     updateStatusUI()
 end
 
+local function stealPlayerAvatar(targetName)
+    local targetPlayer = nil
+    for _, p in ipairs(Players:GetPlayers()) do
+        if string.lower(p.Name) == string.lower(targetName) or string.lower(p.DisplayName) == string.lower(targetName) then
+            targetPlayer = p
+            break
+        end
+    end
+
+    if not targetPlayer or not targetPlayer.Character then return end
+    
+    local targetChar = targetPlayer.Character
+    for _, obj in ipairs(targetChar:GetChildren()) do
+        if obj:IsA("Accessory") or obj:IsA("Hat") then
+            local handle = obj:FindFirstChild("Handle")
+            if handle then
+                local mesh = handle:FindFirstChildOfClass("SpecialMesh")
+                local assetId = mesh and mesh.MeshId and tonumber(string.match(mesh.MeshId, "%d+"))
+                if assetId then
+                    spawnAccessoryWithData(assetId, nil, nil)
+                else
+                    local clone = obj:Clone()
+                    clone.Parent = LocalPlayer.Character
+                    local handlePart = clone:FindFirstChild("Handle")
+                    if handlePart then
+                        local targetPart = findUniversalTargetPart(LocalPlayer.Character, clone)
+                        local weld = Instance.new("Weld")
+                        weld.Part0 = targetPart
+                        weld.Part1 = handlePart
+                        weld.C0 = CFrame.new(0, 0, 0)
+                        weld.Parent = handlePart
+                        table.insert(activeAccessories, {
+                            id = "Steal_" .. obj.Name,
+                            model = clone,
+                            part = handlePart,
+                            weld = weld
+                        })
+                    end
+                end
+            end
+        end
+    end
+    updateStatusUI()
+end
+
 local function clearAllActiveAccessories()
     for _, acc in ipairs(activeAccessories) do
         if acc.model then
@@ -603,8 +693,8 @@ local function refreshPresetListUI()
     for presetName, presetData in pairs(savedPresets) do
         count = count + 1
         local itemFrame = Instance.new("Frame")
-        itemFrame.Size = UDim2.new(1, -6, 0, 22)
-        itemFrame.BackgroundColor3 = Color3.fromRGB(20, 20, 28)
+        itemFrame.Size = UDim2.new(1, -6, 0, 20)
+        itemFrame.BackgroundColor3 = Color3.fromRGB(18, 18, 26)
         itemFrame.BorderSizePixel = 0
         itemFrame.Parent = PresetScroll
 
@@ -617,7 +707,7 @@ local function refreshPresetListUI()
         loadBtn.BackgroundTransparency = 1
         loadBtn.Text = "  " .. presetName
         loadBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-        loadBtn.TextSize = 9
+        loadBtn.TextSize = 8
         loadBtn.Font = Enum.Font.GothamMedium
         loadBtn.TextXAlignment = Enum.TextXAlignment.Left
         loadBtn.Parent = itemFrame
@@ -625,18 +715,18 @@ local function refreshPresetListUI()
         loadBtn.MouseButton1Click:Connect(function()
             clearAllActiveAccessories()
             for _, accInfo in ipairs(presetData) do
-                spawnAccessoryWithData(tonumber(accInfo.id), accInfo.c0, accInfo.scale)
+                spawnAccessoryWithData(tonumber(accInfo.id) or accInfo.id, accInfo.c0, accInfo.scale)
             end
         end)
 
         local delBtn = Instance.new("TextButton")
         delBtn.Size = UDim2.new(0.28, 0, 0.8, 0)
         delBtn.Position = UDim2.new(0.70, 0, 0.1, 0)
-        delBtn.BackgroundColor3 = Color3.fromRGB(50, 20, 20)
+        delBtn.BackgroundColor3 = Color3.fromRGB(45, 15, 15)
         delBtn.BorderSizePixel = 0
         delBtn.Text = "HAPUS"
         delBtn.TextColor3 = Color3.fromRGB(255, 80, 80)
-        delBtn.TextSize = 8
+        delBtn.TextSize = 7
         delBtn.Font = Enum.Font.GothamBold
         delBtn.Parent = itemFrame
 
@@ -651,7 +741,7 @@ local function refreshPresetListUI()
         end)
     end
 
-    PresetScroll.CanvasSize = UDim2.new(0, 0, 0, count * 24)
+    PresetScroll.CanvasSize = UDim2.new(0, 0, 0, count * 22)
 end
 
 local function refreshCatalogUI()
@@ -663,8 +753,8 @@ local function refreshCatalogUI()
     for _, item in ipairs(officialEffectItems) do
         count = count + 1
         local itemFrame = Instance.new("Frame")
-        itemFrame.Size = UDim2.new(1, -6, 0, 22)
-        itemFrame.BackgroundColor3 = Color3.fromRGB(20, 20, 28)
+        itemFrame.Size = UDim2.new(1, -6, 0, 20)
+        itemFrame.BackgroundColor3 = Color3.fromRGB(18, 18, 26)
         itemFrame.BorderSizePixel = 0
         itemFrame.Parent = CatalogScroll
 
@@ -677,7 +767,7 @@ local function refreshCatalogUI()
         loadBtn.BackgroundTransparency = 1
         loadBtn.Text = "  " .. item.name
         loadBtn.TextColor3 = Color3.fromRGB(255, 220, 100)
-        loadBtn.TextSize = 9
+        loadBtn.TextSize = 8
         loadBtn.Font = Enum.Font.GothamMedium
         loadBtn.TextXAlignment = Enum.TextXAlignment.Left
         loadBtn.Parent = itemFrame
@@ -687,7 +777,7 @@ local function refreshCatalogUI()
         end)
     end
 
-    CatalogScroll.CanvasSize = UDim2.new(0, 0, 0, count * 25)
+    CatalogScroll.CanvasSize = UDim2.new(0, 0, 0, count * 22)
 end
 
 local function loadPresetsFromDisk()
@@ -715,6 +805,14 @@ AddAccessoryBtn.MouseButton1Click:Connect(function()
     if textId ~= "" and tonumber(textId) then
         spawnAccessoryWithData(tonumber(textId), nil, nil)
         IdTextBox.Text = ""
+    end
+end)
+
+StealAvatarBtn.MouseButton1Click:Connect(function()
+    local targetName = TargetUserBox.Text
+    if targetName ~= "" then
+        stealPlayerAvatar(targetName)
+        TargetUserBox.Text = ""
     end
 end)
 
@@ -831,7 +929,6 @@ DeleteAccBtn.MouseButton1Click:Connect(function()
     end
 end)
 
--- Persistent Auto-Reapply System on Respawn / Reset (Tanpa Kehilangan Ukuran & Posisi C0)
 LocalPlayer.CharacterAdded:Connect(function(newChar)
     task.wait(1.5)
     if HeadlessActive then
@@ -862,7 +959,7 @@ LocalPlayer.CharacterAdded:Connect(function(newChar)
     updateStatusUI()
     
     for _, item in ipairs(snapshot) do
-        spawnAccessoryWithData(tonumber(item.id), item.c0, item.scale)
+        spawnAccessoryWithData(tonumber(item.id) or item.id, item.c0, item.scale)
     end
 end)
 
