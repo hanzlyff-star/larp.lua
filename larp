@@ -1,6 +1,6 @@
 -- ====================================================================================
--- R6 / R15 / CUSTOM RIG ULTIMATE ACCESSORY MANAGER & AVATAR STEALER GUI (FULL OVERWRITE)
--- CREATED BY HANZ - MODERN LUXURY EDITION (OPTIMIZED & FULLY EXECUTABLE)
+-- R6 / R15 / CUSTOM RIG ULTIMATE ACCESSORY MANAGER & GOD-MODE AVATAR STEALER GUI
+-- CREATED BY HANZ - FULL REPLIT API INTEGRATION
 -- ====================================================================================
 
 local Players = game:GetService("Players")
@@ -10,6 +10,37 @@ local HttpService = game:GetService("HttpService")
 
 local LocalPlayer = Players.LocalPlayer
 local PlayerGui = LocalPlayer:WaitForChild("PlayerGui")
+
+-- ====================================================================================
+-- KONFIGURASI API REPLIT (GANTI KALO URL BERUBAH)
+-- ====================================================================================
+local TERMUX_URL = "https://roblox-asset-resolver--hanzanjaycoy.replit.app/api"
+local unpackFn = table.unpack or unpack
+
+local function httpGetJson(url)
+    local req = (syn and syn.request) or (http and http.request) or http_request or request
+    if not req then return nil end
+    
+    local done = false
+    local result = nil
+    
+    task.spawn(function()
+        local ok, res = pcall(req, {Url = url, Method = "GET"})
+        if ok and res and res.Body then
+            local ok2, decoded = pcall(function() return HttpService:JSONDecode(res.Body) end)
+            if ok2 then result = decoded end
+        end
+        done = true
+    end)
+    
+    local start = tick()
+    while not done and (tick() - start) < 5 do
+        task.wait(0.1)
+    end
+    return result
+end
+
+-- ====================================================================================
 
 if PlayerGui:FindFirstChild("HanzAccessoryGui") then
     PlayerGui.HanzAccessoryGui:Destroy()
@@ -23,7 +54,7 @@ ScreenGui.ResetOnSpawn = false
 ScreenGui.Parent = PlayerGui
 
 -- ====================================================================================
--- NOTIFICATION SYSTEM (BOTTOM RIGHT CORNER)
+-- NOTIFICATION SYSTEM
 -- ====================================================================================
 local NotificationHolder = Instance.new("Frame")
 NotificationHolder.Name = "NotificationHolder"
@@ -75,7 +106,7 @@ local function showNotification(message, duration)
 end
 
 -- ====================================================================================
--- MAIN GUI FRAME (LANDSCAPE MOBILE FRIENDLY - MODERN DESIGN)
+-- MAIN GUI FRAME
 -- ====================================================================================
 local MainFrame = Instance.new("Frame")
 MainFrame.Name = "MainFrame"
@@ -105,7 +136,7 @@ TitleCorner.CornerRadius = UDim.new(0, 8)
 TitleCorner.Parent = TitleBar
 
 local TitleLabel = Instance.new("TextLabel")
-TitleLabel.Size = UDim2.new(1, -35, 1, 0)
+TitleLabel.Size = UDim2.new(1, -140, 1, 0)
 TitleLabel.Position = UDim2.new(0, 10, 0, 0)
 TitleLabel.BackgroundTransparency = 1
 TitleLabel.Text = "R6/R15/MAP RIG MANAGER - BY HANZ"
@@ -114,6 +145,17 @@ TitleLabel.TextSize = 10
 TitleLabel.Font = Enum.Font.GothamBold
 TitleLabel.TextXAlignment = Enum.TextXAlignment.Left
 TitleLabel.Parent = TitleBar
+
+local ServerStatus = Instance.new("TextLabel")
+ServerStatus.Size = UDim2.new(0, 100, 1, 0)
+ServerStatus.Position = UDim2.new(1, -128, 0, 0)
+ServerStatus.BackgroundTransparency = 1
+ServerStatus.Text = "API: ..."
+ServerStatus.TextColor3 = Color3.fromRGB(255, 200, 80)
+ServerStatus.TextSize = 9
+ServerStatus.Font = Enum.Font.GothamBold
+ServerStatus.TextXAlignment = Enum.TextXAlignment.Right
+ServerStatus.Parent = TitleBar
 
 local MinimizeBtn = Instance.new("TextButton")
 MinimizeBtn.Size = UDim2.new(0, 22, 0, 22)
@@ -169,7 +211,7 @@ local Corner1 = Instance.new("UICorner")
 Corner1.CornerRadius = UDim.new(0, 5)
 Corner1.Parent = HeadlessBtn
 
--- Steal Avatar Section (Strict Real Username Matching + Full Overwrite)
+-- Steal Avatar
 local StealUserBox = Instance.new("TextBox")
 StealUserBox.Size = UDim2.new(0.68, 0, 0, 22)
 StealUserBox.Position = UDim2.new(0, 0, 0, 26)
@@ -204,7 +246,7 @@ local StealBC = Instance.new("UICorner")
 StealBC.CornerRadius = UDim.new(0, 5)
 StealBC.Parent = StealBtn
 
--- Official Catalog Section
+-- Catalog
 local CatalogHeader = Instance.new("TextLabel")
 CatalogHeader.Size = UDim2.new(1, 0, 0, 18)
 CatalogHeader.Position = UDim2.new(0, 0, 0, 52)
@@ -230,7 +272,7 @@ CatalogUIList.SortOrder = Enum.SortOrder.LayoutOrder
 CatalogUIList.Padding = UDim.new(0, 3)
 CatalogUIList.Parent = CatalogScroll
 
--- Manual Load Input (Right Col Top)
+-- Manual Load
 local IdTextBox = Instance.new("TextBox")
 IdTextBox.Size = UDim2.new(0.68, 0, 0, 22)
 IdTextBox.Position = UDim2.new(0, 0, 0, 0)
@@ -265,7 +307,7 @@ local Corner4 = Instance.new("UICorner")
 Corner4.CornerRadius = UDim.new(0, 5)
 Corner4.Parent = AddAccessoryBtn
 
--- Preset Outfit Section (Right Col Middle)
+-- Preset
 local PresetNameBox = Instance.new("TextBox")
 PresetNameBox.Size = UDim2.new(0.68, 0, 0, 22)
 PresetNameBox.Position = UDim2.new(0, 0, 0, 26)
@@ -315,7 +357,6 @@ UIList.SortOrder = Enum.SortOrder.LayoutOrder
 UIList.Padding = UDim.new(0, 2)
 UIList.Parent = PresetScroll
 
--- SCROLLABLE ADJUSTMENT PANEL
 local AdjusterHeader = Instance.new("TextLabel")
 AdjusterHeader.Size = UDim2.new(1, 0, 0, 14)
 AdjusterHeader.Position = UDim2.new(0, 0, 0, 100)
@@ -432,7 +473,7 @@ local DelCorner = Instance.new("UICorner")
 DelCorner.CornerRadius = UDim.new(0, 4)
 DelCorner.Parent = DeleteAccBtn
 
--- Touch & Mouse Dragging Controller
+-- Dragging
 local dragging, dragInput, dragStart, startPos
 TitleBar.InputBegan:Connect(function(input)
     if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
@@ -471,7 +512,7 @@ MinimizeBtn.MouseButton1Click:Connect(function()
 end)
 
 -- ====================================================================================
--- LOGIC ENGINE: UNIVERSAL RIG, ATTACHMENT DETECTION & FULL AVATAR OVERWRITE
+-- LOGIC ENGINE
 -- ====================================================================================
 local HeadlessActive = false
 local activeAccessories = {}
@@ -490,7 +531,7 @@ local officialEffectItems = {
 local function updateStatusUI()
     if #activeAccessories == 0 then
         selectedIndex = 0
-        AccStatusLabel.Text = "Aktif: [ Kosong ]"
+                AccStatusLabel.Text = "Aktif: [ Kosong ]"
     else
         if selectedIndex < 1 then selectedIndex = 1 end
         if selectedIndex > #activeAccessories then selectedIndex = #activeAccessories end
@@ -521,14 +562,18 @@ local function applyScaleToPart(part, scaleTable)
     if not part or not scaleTable then return end
     local mesh = part:FindFirstChildOfClass("SpecialMesh")
     if mesh then
-        mesh.Scale = Vector3.new(table.unpack(scaleTable))
+        mesh.Scale = Vector3.new(unpackFn(scaleTable))
     elseif part:IsA("MeshPart") then
-        part.Size = Vector3.new(table.unpack(scaleTable))
+        part.Size = Vector3.new(unpackFn(scaleTable))
     end
 end
 
+-- ====================================================================================
+-- ABSOLUTE RIGID ATTACHMENT ROUTER
+-- ====================================================================================
 local function findUniversalTargetPart(char, accessoryItem)
     local handle = accessoryItem:FindFirstChild("Handle") or accessoryItem
+    
     local att = handle:FindFirstChildOfClass("Attachment")
     if att then
         local attName = att.Name
@@ -542,20 +587,127 @@ local function findUniversalTargetPart(char, accessoryItem)
             end
         end
     end
+
+    for _, child in pairs(handle:GetChildren()) do
+        if child:IsA("Attachment") then
+            local attName = child.Name
+            for _, part in pairs(char:GetChildren()) do
+                if part:IsA("BasePart") then
+                    for _, subChild in pairs(part:GetChildren()) do
+                        if subChild:IsA("Attachment") and subChild.Name == attName then
+                            return part
+                        end
+                    end
+                end
+            end
+        end
+    end
+
+    local itemName = string.lower(accessoryItem.Name)
+    if string.find(itemName, "neck") or string.find(itemName, "collar") or string.find(itemName, "pendant") or string.find(itemName, "choker") then
+        return char:FindFirstChild("UpperTorso") or char:FindFirstChild("Torso") or char:FindFirstChild("Head")
+    elseif string.find(itemName, "back") or string.find(itemName, "cape") or string.find(itemName, "wing") or string.find(itemName, "pack") or string.find(itemName, "shell") then
+        return char:FindFirstChild("LowerTorso") or char:FindFirstChild("UpperTorso") or char:FindFirstChild("Torso")
+    elseif string.find(itemName, "shoulder") or string.find(itemName, "pauldron") or string.find(itemName, "buddy") then
+        return char:FindFirstChild("LeftUpperArm") or char:FindFirstChild("RightUpperArm") or char:FindFirstChild("UpperTorso") or char:FindFirstChild("Torso")
+    elseif string.find(itemName, "waist") or string.find(itemName, "belt") or string.find(itemName, "tail") or string.find(itemName, "hip") or string.find(itemName, "skirt") then
+        return char:FindFirstChild("LowerTorso") or char:FindFirstChild("HumanoidRootPart") or char:FindFirstChild("Torso")
+    elseif string.find(itemName, "face") or string.find(itemName, "mask") or string.find(itemName, "glasses") or string.find(itemName, "visor") or string.find(itemName, "beards") then
+        return char:FindFirstChild("Head")
+    elseif string.find(itemName, "front") or string.find(itemName, "chest") or string.find(itemName, "badge") then
+        return char:FindFirstChild("UpperTorso") or char:FindFirstChild("Torso")
+    end
+
     return char:FindFirstChild("UpperTorso") or char:FindFirstChild("Torso") or char:FindFirstChild("Head") or char:FindFirstChild("HumanoidRootPart")
+end
+
+-- ====================================================================================
+-- REPLIT RESOLVER BUILDER (Bypass InsertService)
+-- ====================================================================================
+local function spawnFromTermuxData(assetId, savedC0Matrix, scaleTable)
+    local char = LocalPlayer.Character
+    if not char then return false end
+
+    local data = httpGetJson(TERMUX_URL .. "/resolve?id=" .. tostring(assetId))
+    if not data or data.error or not data.meshId then
+        return false
+    end
+
+    local meshNum = tostring(data.meshId):match("(%d+)")
+    if not meshNum then return false end
+
+    local texNum = nil
+    if data.textureId then
+        texNum = tostring(data.textureId):match("(%d+)")
+    end
+
+    local handle = Instance.new("Part")
+    handle.Name = (data.name ~= "" and data.name) or ("Acc_" .. tostring(assetId))
+    handle.Size = Vector3.new(1, 1, 1)
+    handle.Transparency = 1
+    handle.CanCollide = false
+    handle.Massless = true
+    handle.Anchored = false
+    handle.Parent = char
+
+    local mesh = Instance.new("SpecialMesh")
+    mesh.MeshType = Enum.MeshType.FileMesh
+    mesh.MeshId = "rbxassetid://" .. meshNum
+    if texNum and texNum ~= "" then
+        mesh.TextureId = "rbxassetid://" .. texNum
+    end
+    if scaleTable then
+        mesh.Scale = Vector3.new(unpackFn(scaleTable))
+    end
+    mesh.Parent = handle
+
+    local targetPart = findUniversalTargetPart(char, handle)
+
+    local weld = Instance.new("Weld")
+    weld.Part0 = targetPart
+    weld.Part1 = handle
+    if savedC0Matrix then
+        weld.C0 = CFrame.new(unpackFn(savedC0Matrix))
+    else
+        weld.C0 = CFrame.new(0, 0, 0)
+    end
+    weld.Parent = handle
+
+    table.insert(activeAccessories, {
+        id = tostring(assetId),
+        model = handle,
+        part = handle,
+        weld = weld
+    })
+
+    return true
 end
 
 local function spawnAccessoryWithData(assetId, savedC0Matrix, scaleTable)
     local char = LocalPlayer.Character
     if not char then return end
 
+    -- 1. Coba Replit API dulu
+    local apiOk = pcall(function()
+        return spawnFromTermuxData(assetId, savedC0Matrix, scaleTable)
+    end)
+    if apiOk and activeAccessories[#activeAccessories] and activeAccessories[#activeAccessories].id == tostring(assetId) then
+        selectedIndex = #activeAccessories
+        updateStatusUI()
+        return
+    end
+
+    -- 2. Fallback ke InsertService
     pcall(function()
         local assetModel = nil
-        local success, err = pcall(function()
+        local success = pcall(function()
             assetModel = InsertService:LoadAsset(assetId)
         end)
         if not success or not assetModel then
-            assetModel = game:GetObjects("rbxassetid://" .. tostring(assetId))[1]
+            local ok2, objs = pcall(function()
+                return game:GetObjects("rbxassetid://" .. tostring(assetId))
+            end)
+            if ok2 and objs and objs[1] then assetModel = objs[1] end
         end
 
         if assetModel then
@@ -573,23 +725,15 @@ local function spawnAccessoryWithData(assetId, savedC0Matrix, scaleTable)
                             weld.Part1 = handle
                             weld.Parent = handle
                         end
-                        
                         if savedC0Matrix then
-                            weld.C0 = CFrame.new(table.unpack(savedC0Matrix))
+                            weld.C0 = CFrame.new(unpackFn(savedC0Matrix))
                         else
                             weld.C0 = CFrame.new(0, 0, 0)
                         end
-                        
                         if scaleTable then
                             applyScaleToPart(handle, scaleTable)
                         end
-                        
-                        table.insert(activeAccessories, {
-                            id = tostring(assetId), 
-                            model = item, 
-                            part = handle, 
-                            weld = weld
-                        })
+                        table.insert(activeAccessories, {id = tostring(assetId), model = item, part = handle, weld = weld})
                     end
                 elseif item:IsA("BasePart") or item:IsA("MeshPart") then
                     item.CanCollide = false
@@ -598,57 +742,16 @@ local function spawnAccessoryWithData(assetId, savedC0Matrix, scaleTable)
                     local weld = Instance.new("Weld")
                     weld.Part0 = targetPart
                     weld.Part1 = item
-                    
                     if savedC0Matrix then
-                        weld.C0 = CFrame.new(table.unpack(savedC0Matrix))
+                        weld.C0 = CFrame.new(unpackFn(savedC0Matrix))
                     else
                         weld.C0 = CFrame.new(0, 0.5, 0)
                     end
                     weld.Parent = item
-                    
                     if scaleTable then
                         applyScaleToPart(item, scaleTable)
                     end
-                    
-                    table.insert(activeAccessories, {
-                        id = tostring(assetId), 
-                        model = item, 
-                        part = item, 
-                        weld = weld
-                    })
-                elseif item:IsA("Model") then
-                    for _, child in pairs(item:GetChildren()) do
-                        if child:IsA("Accessory") or child:IsA("Hat") then
-                            child.Parent = char
-                            local handle = child:FindFirstChild("Handle")
-                            local targetPart = findUniversalTargetPart(char, child)
-                            local weld = handle and (handle:FindFirstChildOfClass("Weld") or handle:FindFirstChildOfClass("WeldConstraint"))
-                            if handle and (not weld or not weld:IsA("Weld")) then
-                                if weld then weld:Destroy() end
-                                weld = Instance.new("Weld")
-                                weld.Part0 = targetPart
-                                weld.Part1 = handle
-                                weld.Parent = handle
-                            end
-                            
-                            if savedC0Matrix and weld then
-                                weld.C0 = CFrame.new(table.unpack(savedC0Matrix))
-                            else
-                                if weld then weld.C0 = CFrame.new(0, 0, 0) end
-                            end
-                            
-                            if scaleTable and handle then
-                                applyScaleToPart(handle, scaleTable)
-                            end
-                            
-                            table.insert(activeAccessories, {
-                                id = tostring(assetId), 
-                                model = child, 
-                                part = handle,
-                                weld = weld
-                            })
-                        end
-                    end
+                    table.insert(activeAccessories, {id = tostring(assetId), model = item, part = item, weld = weld})
                 end
             end
         end
@@ -662,7 +765,7 @@ local function clearCurrentCharacterAvatar()
     if not char then return end
 
     for _, child in ipairs(char:GetChildren()) do
-        if child:IsA("Accessory") or child:IsA("Hat") or child:IsA("Shirt") or child:IsA("Pants") or child:IsA("ShirtGraphic") or child:IsA("BodyColors") then
+        if child:IsA("Accessory") or child:IsA("Hat") or child:IsA("Shirt") or child:IsA("Pants") or child:IsA("ShirtGraphic") or child:IsA("BodyColors") or child:IsA("CharacterMesh") or child:IsA("Clothing") or child:IsA("Animate") or child:IsA("LocalScript") then
             pcall(function() child:Destroy() end)
         end
     end
@@ -684,7 +787,6 @@ local function stealPlayerAvatar(targetInput)
     local targetUserId = nil
     local targetUsername = ""
 
-    -- Strictly match real username, ignoring display names
     for _, p in ipairs(Players:GetPlayers()) do
         if string.lower(p.Name) == string.lower(targetInput) then
             targetUserId = p.UserId
@@ -694,123 +796,83 @@ local function stealPlayerAvatar(targetInput)
     end
 
     if not targetUserId then
-        local success, fetchedId = pcall(function()
-            return Players:GetUserIdFromNameAsync(targetInput)
-        end)
-        if success and fetchedId then
-            targetUserId = fetchedId
+        local td = httpGetJson(TERMUX_URL .. "/userid?user=" .. targetInput)
+        if td and td.userId then
+            targetUserId = td.userId
             targetUsername = targetInput
+        else
+            local success, fetchedId = pcall(function() return Players:GetUserIdFromNameAsync(targetInput) end)
+            if success and fetchedId then
+                targetUserId = fetchedId
+                targetUsername = targetInput
+            end
         end
     end
 
     if not targetUserId then
-        showNotification("Username [" .. targetInput .. "] tidak ditemukan!", 4)
+        showNotification("Username tidak ditemukan!", 4)
         return
     end
 
-    showNotification("Mengambil seluruh avatar: " .. targetUsername, 3)
+    showNotification("Mengambil avatar: " .. targetUsername, 3)
 
-    local success, humDesc = pcall(function()
-        return Players:GetHumanoidDescriptionFromUserId(targetUserId)
-    end)
+    local outfitData = httpGetJson(TERMUX_URL .. "/outfit?userId=" .. tostring(targetUserId))
+    local accessoriesToLoad = {}
 
-    if success and humDesc then
-        clearCurrentCharacterAvatar()
-
-        local char = LocalPlayer.Character
-        local humanoid = char and char:FindFirstChildOfClass("Humanoid")
-
-        if humanoid then
-            pcall(function()
-                humanoid:ApplyDescription(humDesc)
-            end)
+    if outfitData and outfitData.accessories and #outfitData.accessories > 0 then
+        for _, item in ipairs(outfitData.accessories) do
+            table.insert(accessoriesToLoad, item.id)
         end
-
-        local accessoriesToLoad = {}
-        local function extractIdsFromProperty(propString)
-            if propString and propString ~= "" then
-                for id in string.gmatch(propString, "%d+") do
-                    table.insert(accessoriesToLoad, tonumber(id))
-                end
-            end
-        end
-
-        extractIdsFromProperty(humDesc.HatAccessory)
-        extractIdsFromProperty(humDesc.HairAccessory)
-        extractIdsFromProperty(humDesc.FaceAccessory)
-        extractIdsFromProperty(humDesc.NeckAccessory)
-        extractIdsFromProperty(humDesc.ShouldersAccessory)
-        extractIdsFromProperty(humDesc.FrontAccessory)
-        extractIdsFromProperty(humDesc.BackAccessory)
-        extractIdsFromProperty(humDesc.WaistAccessory)
-
-        local totalCount = 0
-        for _, assetId in ipairs(accessoriesToLoad) do
-            totalCount = totalCount + 1
-            showNotification("Mengambil id [" .. assetId .. "]", 3)
-            spawnAccessoryWithData(assetId, nil, nil)
-            task.wait(0.15)
-        end
-
-        showNotification("Selesai menimpa avatar penuh " .. targetUsername .. "!", 4)
     else
-        local targetPlayer = Players:GetPlayerByUserId(targetUserId)
-        if targetPlayer and targetPlayer.Character then
-            clearCurrentCharacterAvatar()
-
-            local targetChar = targetPlayer.Character
-            local char = LocalPlayer.Character
-
-            for _, obj in ipairs(targetChar:GetChildren()) do
-                if obj:IsA("Shirt") or obj:IsA("Pants") or obj:IsA("ShirtGraphic") or obj:IsA("BodyColors") then
-                    local clone = obj:Clone()
-                    clone.Parent = char
+        local success, humDesc = pcall(function() return Players:GetHumanoidDescriptionFromUserId(targetUserId) end)
+        if success and humDesc then
+            local function extractIds(prop)
+                if prop and prop ~= "" then
+                    for id in string.gmatch(prop, "%d+") do table.insert(accessoriesToLoad, tonumber(id)) end
                 end
             end
-
-            local count = 0
-            for _, obj in ipairs(targetChar:GetChildren()) do
-                if obj:IsA("Accessory") or obj:IsA("Hat") then
-                    local handle = obj:FindFirstChild("Handle")
-                    if handle then
-                        local assetId = nil
-                        local mesh = handle:FindFirstChildOfClass("SpecialMesh")
-                        if mesh and mesh.MeshId ~= "" then
-                            assetId = tonumber(string.match(mesh.MeshId, "%d+"))
-                        end
-                        if not assetId and handle:IsA("MeshPart") and handle.MeshId ~= "" then
-                            assetId = tonumber(string.match(handle.MeshId, "%d+"))
-                        end
-
-                        if assetId then
-                            count = count + 1
-                            showNotification("Mengambil id [" .. assetId .. "]", 3)
-                            spawnAccessoryWithData(assetId, nil, nil)
-                            task.wait(0.15)
-                        end
-                    end
-                end
-            end
-            showNotification("Selesai menimpa avatar penuh " .. targetUsername .. "!", 4)
-        else
-            showNotification("Gagal mengambil data avatar target!", 4)
+            extractIds(humDesc.HatAccessory)
+            extractIds(humDesc.HairAccessory)
+            extractIds(humDesc.FaceAccessory)
+            extractIds(humDesc.NeckAccessory)
+            extractIds(humDesc.ShouldersAccessory)
+            extractIds(humDesc.FrontAccessory)
+            extractIds(humDesc.BackAccessory)
+            extractIds(humDesc.WaistAccessory)
         end
     end
+
+    if #accessoriesToLoad == 0 then
+        showNotification("Ga ada aksesoris ke load!", 4)
+        return
+    end
+
+    clearCurrentCharacterAvatar()
+
+    local success2, humDesc2 = pcall(function() return Players:GetHumanoidDescriptionFromUserId(targetUserId) end)
+    if success2 and humDesc2 then
+        local humanoid = LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
+        if humanoid then pcall(function() humanoid:ApplyDescription(humDesc2) end) task.wait(0.3) end
+    end
+
+    for _, assetId in ipairs(accessoriesToLoad) do
+        showNotification("ID " .. targetUsername .. " [" .. assetId .. "]", 2)
+        spawnAccessoryWithData(assetId, nil, nil)
+        task.wait(0.2)
+    end
+
+    showNotification("Selesai: " .. targetUsername .. "!", 4)
 end
 
+-- ====================================================================================
+-- PRESET SYSTEM
+-- ====================================================================================
 local function savePresetsToDisk()
-    pcall(function()
-        if writefile then
-            writefile(PRESET_FILE_NAME, HttpService:JSONEncode(savedPresets))
-        end
-    end)
+    pcall(function() if writefile then writefile(PRESET_FILE_NAME, HttpService:JSONEncode(savedPresets)) end end)
 end
 
 local function refreshPresetListUI()
-    for _, child in pairs(PresetScroll:GetChildren()) do
-        if child:IsA("Frame") then child:Destroy() end
-    end
-
+    for _, child in pairs(PresetScroll:GetChildren()) do if child:IsA("Frame") then child:Destroy() end end
     local count = 0
     for presetName, presetData in pairs(savedPresets) do
         count = count + 1
@@ -819,11 +881,9 @@ local function refreshPresetListUI()
         itemFrame.BackgroundColor3 = Color3.fromRGB(20, 20, 28)
         itemFrame.BorderSizePixel = 0
         itemFrame.Parent = PresetScroll
-
         local c = Instance.new("UICorner")
         c.CornerRadius = UDim.new(0, 4)
         c.Parent = itemFrame
-
         local loadBtn = Instance.new("TextButton")
         loadBtn.Size = UDim2.new(0.68, 0, 1, 0)
         loadBtn.BackgroundTransparency = 1
@@ -833,14 +893,10 @@ local function refreshPresetListUI()
         loadBtn.Font = Enum.Font.GothamMedium
         loadBtn.TextXAlignment = Enum.TextXAlignment.Left
         loadBtn.Parent = itemFrame
-
         loadBtn.MouseButton1Click:Connect(function()
             clearCurrentCharacterAvatar()
-            for _, accInfo in ipairs(presetData) do
-                spawnAccessoryWithData(tonumber(accInfo.id) or accInfo.id, accInfo.c0, accInfo.scale)
-            end
+            for _, accInfo in ipairs(presetData) do spawnAccessoryWithData(tonumber(accInfo.id) or accInfo.id, accInfo.c0, accInfo.scale) end
         end)
-
         local delBtn = Instance.new("TextButton")
         delBtn.Size = UDim2.new(0.28, 0, 0.8, 0)
         delBtn.Position = UDim2.new(0.70, 0, 0.1, 0)
@@ -851,26 +907,20 @@ local function refreshPresetListUI()
         delBtn.TextSize = 8
         delBtn.Font = Enum.Font.GothamBold
         delBtn.Parent = itemFrame
-
         local dc = Instance.new("UICorner")
         dc.CornerRadius = UDim.new(0, 3)
         dc.Parent = delBtn
-
         delBtn.MouseButton1Click:Connect(function()
             savedPresets[presetName] = nil
             savePresetsToDisk()
             refreshPresetListUI()
         end)
     end
-
     PresetScroll.CanvasSize = UDim2.new(0, 0, 0, count * 24)
 end
 
 local function refreshCatalogUI()
-    for _, child in pairs(CatalogScroll:GetChildren()) do
-        if child:IsA("Frame") then child:Destroy() end
-    end
-
+    for _, child in pairs(CatalogScroll:GetChildren()) do if child:IsA("Frame") then child:Destroy() end end
     local count = 0
     for _, item in ipairs(officialEffectItems) do
         count = count + 1
@@ -879,11 +929,9 @@ local function refreshCatalogUI()
         itemFrame.BackgroundColor3 = Color3.fromRGB(20, 20, 28)
         itemFrame.BorderSizePixel = 0
         itemFrame.Parent = CatalogScroll
-
         local c = Instance.new("UICorner")
         c.CornerRadius = UDim.new(0, 4)
         c.Parent = itemFrame
-
         local loadBtn = Instance.new("TextButton")
         loadBtn.Size = UDim2.new(1, 0, 1, 0)
         loadBtn.BackgroundTransparency = 1
@@ -893,12 +941,8 @@ local function refreshCatalogUI()
         loadBtn.Font = Enum.Font.GothamMedium
         loadBtn.TextXAlignment = Enum.TextXAlignment.Left
         loadBtn.Parent = itemFrame
-
-        loadBtn.MouseButton1Click:Connect(function()
-            spawnAccessoryWithData(item.id, nil, nil)
-        end)
+        loadBtn.MouseButton1Click:Connect(function() spawnAccessoryWithData(item.id, nil, nil) end)
     end
-
     CatalogScroll.CanvasSize = UDim2.new(0, 0, 0, count * 25)
 end
 
@@ -907,14 +951,15 @@ local function loadPresetsFromDisk()
         if readfile and isfile and isfile(PRESET_FILE_NAME) then
             local data = readfile(PRESET_FILE_NAME)
             local decoded = HttpService:JSONDecode(data)
-            if decoded and type(decoded) == "table" then
-                savedPresets = decoded
-            end
+            if decoded and type(decoded) == "table" then savedPresets = decoded end
         end
     end)
     refreshPresetListUI()
 end
 
+-- ====================================================================================
+-- BUTTON HANDLERS
+-- ====================================================================================
 HeadlessBtn.MouseButton1Click:Connect(function()
     HeadlessActive = not HeadlessActive
     setHeadless(HeadlessActive)
@@ -926,7 +971,7 @@ AddAccessoryBtn.MouseButton1Click:Connect(function()
     local textId = IdTextBox.Text
     if textId ~= "" and tonumber(textId) then
         spawnAccessoryWithData(tonumber(textId), nil, nil)
-        showNotification("Berhasil load ID: " .. textId, 3)
+        showNotification("Load ID: " .. textId, 3)
         IdTextBox.Text = ""
     end
 end)
@@ -945,25 +990,14 @@ SavePresetBtn.MouseButton1Click:Connect(function()
         local presetData = {}
         for _, acc in ipairs(activeAccessories) do
             local c0Data = nil
-            if acc.weld and acc.weld:IsA("Weld") then
-                c0Data = {acc.weld.C0:GetComponents()}
-            end
-            
+            if acc.weld and acc.weld:IsA("Weld") then c0Data = {acc.weld.C0:GetComponents()} end
             local scaleComp = nil
             if acc.part then
                 local mesh = acc.part:FindFirstChildOfClass("SpecialMesh")
-                if mesh then
-                    scaleComp = {mesh.Scale.X, mesh.Scale.Y, mesh.Scale.Z}
-                elseif acc.part:IsA("MeshPart") then
-                    scaleComp = {acc.part.Size.X, acc.part.Size.Y, acc.part.Size.Z}
-                end
+                if mesh then scaleComp = {mesh.Scale.X, mesh.Scale.Y, mesh.Scale.Z}
+                elseif acc.part:IsA("MeshPart") then scaleComp = {acc.part.Size.X, acc.part.Size.Y, acc.part.Size.Z} end
             end
-            
-            table.insert(presetData, {
-                id = acc.id,
-                c0 = c0Data,
-                scale = scaleComp
-            })
+            table.insert(presetData, {id = acc.id, c0 = c0Data, scale = scaleComp})
         end
         savedPresets[pName] = presetData
         savePresetsToDisk()
@@ -992,7 +1026,7 @@ end)
 local function applyC0Offset(dx, dy, dz)
     if selectedIndex > 0 and activeAccessories[selectedIndex] then
         local entry = activeAccessories[selectedIndex]
-        if entry.weld and entry.weld:IsA("Weld") then
+                if entry.weld and entry.weld:IsA("Weld") then
             entry.weld.C0 = entry.weld.C0 * CFrame.new(dx, dy, dz)
         end
     end
@@ -1013,7 +1047,6 @@ YPlusBtn.MouseButton1Click:Connect(function() applyC0Offset(0, 0.1, 0) end)
 YMinBtn.MouseButton1Click:Connect(function() applyC0Offset(0, -0.1, 0) end)
 ZPlusBtn.MouseButton1Click:Connect(function() applyC0Offset(0, 0, 0.1) end)
 ZMinBtn.MouseButton1Click:Connect(function() applyC0Offset(0, 0, -0.1) end)
-
 RotXBtn.MouseButton1Click:Connect(function() applyRotation(math.rad(90), 0, 0) end)
 RotYBtn.MouseButton1Click:Connect(function() applyRotation(0, math.rad(90), 0) end)
 RotZBtn.MouseButton1Click:Connect(function() applyRotation(0, 0, math.rad(90)) end)
@@ -1055,25 +1088,17 @@ end)
 
 LocalPlayer.CharacterAdded:Connect(function(newChar)
     task.wait(1.5)
-    if HeadlessActive then
-        setHeadless(true)
-    end
+    if HeadlessActive then setHeadless(true) end
     
     local snapshot = {}
     for _, acc in ipairs(activeAccessories) do
         local c0Data = nil
-        if acc.weld and acc.weld:IsA("Weld") then
-            c0Data = {acc.weld.C0:GetComponents()}
-        end
-        
+        if acc.weld and acc.weld:IsA("Weld") then c0Data = {acc.weld.C0:GetComponents()} end
         local scaleComp = nil
         if acc.part then
             local mesh = acc.part:FindFirstChildOfClass("SpecialMesh")
-            if mesh then
-                scaleComp = {mesh.Scale.X, mesh.Scale.Y, mesh.Scale.Z}
-            elseif acc.part:IsA("MeshPart") then
-                scaleComp = {acc.part.Size.X, acc.part.Size.Y, acc.part.Size.Z}
-            end
+            if mesh then scaleComp = {mesh.Scale.X, mesh.Scale.Y, mesh.Scale.Z}
+            elseif acc.part:IsA("MeshPart") then scaleComp = {acc.part.Size.X, acc.part.Size.Y, acc.part.Size.Z} end
         end
         table.insert(snapshot, {id = acc.id, c0 = c0Data, scale = scaleComp})
     end
@@ -1087,5 +1112,22 @@ LocalPlayer.CharacterAdded:Connect(function(newChar)
     end
 end)
 
+-- ====================================================================================
+-- API STATUS PING (Mengecek Replit Konek atau Engga)
+-- ====================================================================================
+task.spawn(function()
+    while task.wait(10) do
+        local ping = httpGetJson(TERMUX_URL .. "/")
+        if ping and ping.status == "ok" then
+            ServerStatus.Text = "API: ON"
+            ServerStatus.TextColor3 = Color3.fromRGB(80, 255, 120)
+        else
+            ServerStatus.Text = "API: OFF"
+            ServerStatus.TextColor3 = Color3.fromRGB(255, 80, 80)
+        end
+    end
+end)
+
 loadPresetsFromDisk()
 refreshCatalogUI()
+showNotification("Script loaded! Cek status API di kanan atas.", 4)
