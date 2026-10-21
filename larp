@@ -7,7 +7,7 @@ local RunService       = game:GetService("RunService")
 local LocalPlayer = Players.LocalPlayer
 local PlayerGui   = LocalPlayer:WaitForChild("PlayerGui")
 
-local PRESET_FILE_NAME = "AccessoryPresets.json"
+local PRESET_FILE_NAME = "R6_AccessoryPresets_Hanz.json"
 
 local State = {
     headless    = false,
@@ -371,10 +371,6 @@ local function updateStatusUI()
     end
 end
 
--- ============================================================
--- SNAPSHOT: posisi disimpan relatif ke HumanoidRootPart,
--- jadi nggak peduli nanti nempel ke part apa / rig apa.
--- ============================================================
 local function snapshotAccessory(acc)
     local snap = {
         id = acc.id,
