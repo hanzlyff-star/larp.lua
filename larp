@@ -1,6 +1,3 @@
--- ACCESSORY MANAGER v9 - EVADE FINAL
--- Fix: karakter Evade ada di workspace.Players (LocalPlayer.Character = nil)
-
 local Players          = game:GetService("Players")
 local UserInputService = game:GetService("UserInputService")
 local InsertService    = game:GetService("InsertService")
@@ -10,7 +7,7 @@ local RunService       = game:GetService("RunService")
 local LocalPlayer = Players.LocalPlayer
 local PlayerGui   = LocalPlayer:WaitForChild("PlayerGui")
 
-local PRESET_FILE_NAME = "R6_AccessoryPresets_Hanz.json"
+local PRESET_FILE_NAME = "AccessoryPresets.json"
 
 local State = {
     headless    = false,
@@ -21,9 +18,6 @@ local State = {
     currentChar = nil,
 }
 
--- ============================================================
--- GUI
--- ============================================================
 if PlayerGui:FindFirstChild("HanzAccessoryGui") then
     PlayerGui.HanzAccessoryGui:Destroy()
 end
@@ -54,7 +48,7 @@ local TitleLabel = Instance.new("TextLabel")
 TitleLabel.Size = UDim2.new(1, -35, 1, 0)
 TitleLabel.Position = UDim2.new(0, 10, 0, 0)
 TitleLabel.BackgroundTransparency = 1
-TitleLabel.Text = "ACCESSORY MANAGER - EVADE FINAL (v9)"
+TitleLabel.Text = "ACCESSORY MANAGER"
 TitleLabel.TextColor3 = Color3.fromRGB(80, 255, 120)
 TitleLabel.TextSize = 10
 TitleLabel.Font = Enum.Font.GothamBold
@@ -239,17 +233,12 @@ do
     end)
 end
 
--- ============================================================
--- CARI KARAKTER (FIX EVADE: workspace.Players / PlayerCache / kamera)
--- ============================================================
 local function getChar()
-    -- 1. Cara standar
     local c = LocalPlayer.Character
     if c and c.Parent and c:FindFirstChildOfClass("Humanoid") then
         return c
     end
 
-    -- 2. Folder khas Evade: workspace.Players / PlayerCache
     for _, folderName in ipairs({"Players", "PlayerCache", "Rigs"}) do
         local folder = workspace:FindFirstChild(folderName)
         if folder and folder:IsA("Folder") then
@@ -260,7 +249,6 @@ local function getChar()
         end
     end
 
-    -- 3. Lewat kamera (kamera selalu tahu karakter kita)
     local cam = workspace.CurrentCamera
     if cam then
         local subj = cam.CameraSubject
@@ -280,7 +268,6 @@ local function getChar()
         end
     end
 
-    -- 4. Scan descendants pakai nama player
     for _, obj in ipairs(workspace:GetDescendants()) do
         if obj:IsA("Model") and obj.Name == LocalPlayer.Name
             and obj:FindFirstChildOfClass("Humanoid") then
@@ -322,6 +309,13 @@ local function findTorso(char)
     return best
 end
 
+local function getRootPart(char)
+    if not char then return nil end
+    local hrp = char:FindFirstChild("HumanoidRootPart")
+    if hrp and hrp:IsA("BasePart") then return hrp end
+    return findTorso(char)
+end
+
 local function waitForRig(char, timeout)
     local t0 = tick()
     while tick() - t0 < (timeout or 15) do
@@ -335,9 +329,6 @@ local function waitForRig(char, timeout)
     return false
 end
 
--- ============================================================
--- HEADLESS - dipaksa tiap frame
--- ============================================================
 local function hideHead(char)
     local head = findHead(char)
     if not head then return end
@@ -364,9 +355,6 @@ RunService.RenderStepped:Connect(function()
     end
 end)
 
--- ============================================================
--- UI STATUS
--- ============================================================
 local function updateStatus(text)
     AccStatusLabel.Text = text or "Aktif: [ Kosong ]"
 end
@@ -384,23 +372,38 @@ local function updateStatusUI()
 end
 
 -- ============================================================
--- SNAPSHOT
+-- SNAPSHOT: posisi disimpan relatif ke HumanoidRootPart,
+-- jadi nggak peduli nanti nempel ke part apa / rig apa.
 -- ============================================================
 local function snapshotAccessory(acc)
-    local c0, c1, scale = nil, nil, nil
-    if acc.weld and acc.weld:IsA("Weld") then
-        c0 = {acc.weld.C0:GetComponents()}
-        c1 = {acc.weld.C1:GetComponents()}
+    local snap = {
+        id = acc.id,
+        targetName = acc.targetName,
+        c0 = nil,
+        c1 = nil,
+        rootRel = nil,
+        scale = nil,
+    }
+    if acc.weld and acc.weld:IsA("Weld")
+        and acc.weld.Part0 and acc.weld.Part0.Parent
+        and acc.weld.Part1 and acc.weld.Part1.Parent then
+        snap.c0 = {acc.weld.C0:GetComponents()}
+        snap.c1 = {acc.weld.C1:GetComponents()}
+        local root = getRootPart(acc.weld.Part0.Parent)
+        if root then
+            local worldCF = acc.weld.Part0.CFrame * acc.weld.C0 * acc.weld.C1:Inverse()
+            snap.rootRel = {(root.CFrame:Inverse() * worldCF):GetComponents()}
+        end
     end
     if acc.part and acc.part.Parent then
         local mesh = acc.part:FindFirstChildOfClass("SpecialMesh")
         if mesh then
-            scale = {mesh.Scale.X, mesh.Scale.Y, mesh.Scale.Z}
+            snap.scale = {mesh.Scale.X, mesh.Scale.Y, mesh.Scale.Z}
         elseif acc.part:IsA("MeshPart") then
-            scale = {acc.part.Size.X, acc.part.Size.Y, acc.part.Size.Z}
+            snap.scale = {acc.part.Size.X, acc.part.Size.Y, acc.part.Size.Z}
         end
     end
-    return {id = acc.id, c0 = c0, c1 = c1, scale = scale}
+    return snap
 end
 
 local function rebuildPersist()
@@ -412,9 +415,6 @@ local function rebuildPersist()
     end
 end
 
--- ============================================================
--- WELD & ATTACH
--- ============================================================
 local function setupWeld(handle, targetPart, savedC0, savedC1)
     for _, v in ipairs(handle:GetChildren()) do
         if v:IsA("Weld") or v:IsA("WeldConstraint") or v:IsA("Motor6D") then
@@ -460,6 +460,16 @@ local function setupWeld(handle, targetPart, savedC0, savedC1)
     return weld
 end
 
+local function applySavedPosition(weld, char, data)
+    if not data.rootRel then return end
+    local root = getRootPart(char)
+    if not root then return end
+    local c1 = (data.c1 and CFrame.new(table.unpack(data.c1))) or CFrame.new(0, 0, 0)
+    local worldCF = root.CFrame * CFrame.new(table.unpack(data.rootRel))
+    weld.C0 = weld.Part0.CFrame:Inverse() * worldCF * c1
+    weld.C1 = c1
+end
+
 local function applyScale(part, scaleTable)
     if not part or not scaleTable then return end
     local mesh = part:FindFirstChildOfClass("SpecialMesh")
@@ -503,10 +513,7 @@ local function findTargetPart(char, item, handle)
     return nil, "Unknown"
 end
 
--- ============================================================
--- SPAWN AKSESORIS
--- ============================================================
-local function processItem(item, char, assetId, savedC0, savedC1, scaleTable)
+local function processItem(item, char, data)
     if item:IsA("Accessory") or item:IsA("Hat") then
         item.Parent = char
         local handle = item:FindFirstChild("Handle")
@@ -517,10 +524,11 @@ local function processItem(item, char, assetId, savedC0, savedC1, scaleTable)
             targetName = targetPart and targetPart.Name or "Torso"
         end
         if not targetPart then return end
-        local weld = setupWeld(handle, targetPart, savedC0, savedC1)
-        if scaleTable then applyScale(handle, scaleTable) end
+        local weld = setupWeld(handle, targetPart, data.c0, data.c1)
+        applySavedPosition(weld, char, data)
+        if data.scale then applyScale(handle, data.scale) end
         table.insert(State.active, {
-            id = tostring(assetId), model = item, part = handle,
+            id = tostring(data.id), model = item, part = handle,
             weld = weld, targetName = targetName,
         })
 
@@ -529,16 +537,17 @@ local function processItem(item, char, assetId, savedC0, savedC1, scaleTable)
         item.Parent = char
         local targetPart = findTorso(char) or findHead(char)
         if not targetPart then return end
-        local weld = setupWeld(item, targetPart, savedC0, savedC1)
-        if scaleTable then applyScale(item, scaleTable) end
+        local weld = setupWeld(item, targetPart, data.c0, data.c1)
+        applySavedPosition(weld, char, data)
+        if data.scale then applyScale(item, data.scale) end
         table.insert(State.active, {
-            id = tostring(assetId), model = item, part = item,
+            id = tostring(data.id), model = item, part = item,
             weld = weld, targetName = targetPart.Name,
         })
 
     elseif item:IsA("Model") or item:IsA("Folder") then
         for _, child in ipairs(item:GetChildren()) do
-            processItem(child, char, assetId, savedC0, savedC1, scaleTable)
+            processItem(child, char, data)
         end
     end
 end
@@ -570,14 +579,11 @@ local function spawnAccessory(data, char)
 
     local before = #State.active
     for _, obj in ipairs(objects) do
-        processItem(obj, char, numId, data.c0, data.c1, data.scale)
+        processItem(obj, char, data)
     end
     return #State.active > before
 end
 
--- ============================================================
--- RESTORE
--- ============================================================
 local restoreRunning = false
 local function restoreAll(char)
     if restoreRunning then return end
@@ -593,7 +599,7 @@ local function restoreAll(char)
 
     local backup = {}
     for i, v in ipairs(State.persist) do
-        backup[i] = {id = v.id, c0 = v.c0, c1 = v.c1, scale = v.scale}
+        backup[i] = v
     end
 
     for _, item in ipairs(backup) do
@@ -612,9 +618,6 @@ local function restoreAll(char)
     restoreRunning = false
 end
 
--- ============================================================
--- WATCHER
--- ============================================================
 local function hookCharacter(char)
     State.currentChar = char
 
@@ -675,9 +678,6 @@ do
     end)
 end
 
--- ============================================================
--- PRESET
--- ============================================================
 local function savePresetsToDisk()
     pcall(function()
         if writefile then writefile(PRESET_FILE_NAME, HttpService:JSONEncode(State.presets)) end
@@ -714,7 +714,7 @@ local function refreshPresetListUI()
             State.active = {}
             State.persist = {}
             for _, accInfo in ipairs(data) do
-                spawnAccessory({id = accInfo.id, c0 = accInfo.c0, c1 = accInfo.c1, scale = accInfo.scale})
+                spawnAccessory(accInfo)
                 task.wait(0.15)
             end
             rebuildPersist()
@@ -751,9 +751,6 @@ local function loadPresetsFromDisk()
     refreshPresetListUI()
 end
 
--- ============================================================
--- KATALOG
--- ============================================================
 local officialEffectItems = {
     {name = "8-Bit Royal Crown",       id = 10159600649},
     {name = "8-Bit HP Bar",            id = 10159610478},
@@ -794,9 +791,6 @@ local function refreshCatalogUI()
     CatalogScroll.CanvasSize = UDim2.new(0, 0, 0, #officialEffectItems * 25)
 end
 
--- ============================================================
--- RESET
--- ============================================================
 local function resetAll()
     for _, acc in ipairs(State.active) do
         pcall(function() if acc.model then acc.model:Destroy() end end)
@@ -814,9 +808,6 @@ local function resetAll()
     updateStatus("Aktif: [ Direset ]")
 end
 
--- ============================================================
--- EVENT TOMBOL
--- ============================================================
 HeadlessBtn.MouseButton1Click:Connect(function()
     State.headless = not State.headless
     HeadlessBtn.Text = State.headless and "HEADLESS: ON" or "HEADLESS: OFF"
@@ -934,9 +925,6 @@ DeleteAccBtn.MouseButton1Click:Connect(function()
     end
 end)
 
--- ============================================================
--- INIT
--- ============================================================
 loadPresetsFromDisk()
 refreshCatalogUI()
 
@@ -945,4 +933,4 @@ if c then
     hookCharacter(c)
 end
 
-print("[Hanz] v9 loaded | Character:", c and c.Name or "menunggu spawn (watcher aktif)")
+print("[Hanz] loaded | Character:", c and c.Name or "menunggu spawn")
