@@ -16,6 +16,7 @@ local State = {
     presets     = {},
     selected    = 0,
     currentChar = nil,
+    loading     = false,
 }
 
 if PlayerGui:FindFirstChild("HanzAccessoryGui") then
@@ -371,6 +372,15 @@ local function updateStatusUI()
     end
 end
 
+local function deepCopy(t)
+    if type(t) ~= "table" then return t end
+    local r = {}
+    for k, v in pairs(t) do
+        r[k] = deepCopy(v)
+    end
+    return r
+end
+
 local function snapshotAccessory(acc)
     local snap = {
         id = acc.id,
@@ -457,6 +467,11 @@ local function setupWeld(handle, targetPart, savedC0, savedC1)
 end
 
 local function applySavedPosition(weld, char, data)
+    -- Prioritas 1: part tujuan SAMA kayak waktu simpan → pakai offset asli (akurat 100%)
+    if data.targetName and data.c0 and data.c1 and weld.Part0.Name == data.targetName then
+        return
+    end
+    -- Prioritas 2: rootRel (cadangan kalau part beda / rig beda)
     if not data.rootRel then return end
     local root = getRootPart(char)
     if not root then return end
@@ -509,8 +524,22 @@ local function findTargetPart(char, item, handle)
     return nil, "Unknown"
 end
 
+local function markMine(item)
+    pcall(function() item:SetAttribute("HanzAcc", true) end)
+end
+
+local function isMine(inst)
+    local p = inst
+    while p do
+        if p:GetAttribute and p:GetAttribute("HanzAcc") then return true end
+        p = p.Parent
+    end
+    return false
+end
+
 local function processItem(item, char, data)
     if item:IsA("Accessory") or item:IsA("Hat") then
+        markMine(item)
         item.Parent = char
         local handle = item:FindFirstChild("Handle")
         if not handle then return end
@@ -529,6 +558,7 @@ local function processItem(item, char, data)
         })
 
     elseif item:IsA("BasePart") or item:IsA("MeshPart") then
+        markMine(item)
         item.CanCollide = false
         item.Parent = char
         local targetPart = findTorso(char) or findHead(char)
@@ -542,6 +572,7 @@ local function processItem(item, char, data)
         })
 
     elseif item:IsA("Model") or item:IsA("Folder") then
+        markMine(item)
         for _, child in ipairs(item:GetChildren()) do
             processItem(child, char, data)
         end
@@ -583,6 +614,7 @@ end
 local restoreRunning = false
 local function restoreAll(char)
     if restoreRunning then return end
+    if State.loading then return end
     restoreRunning = true
 
     for _, acc in ipairs(State.active) do
@@ -618,10 +650,13 @@ local function hookCharacter(char)
     State.currentChar = char
 
     char.DescendantAdded:Connect(function(d)
+        -- Abaikan part dari aksesoris kita sendiri (ini yang bikin dobel!)
+        if isMine(d) then return end
         if d:IsA("BasePart") then
             local n = d.Name:lower()
             if n:find("head") or n:find("torso") then
                 task.wait(0.6)
+                if State.loading then return end
                 if getChar() == char and #State.persist > 0 then
                     restoreAll(char)
                 end
@@ -632,6 +667,7 @@ local function hookCharacter(char)
     task.spawn(function()
         if not waitForRig(char, 15) then return end
         task.wait(0.4)
+        if State.loading then return end
         if getChar() ~= char then return end
         restoreAll(char)
     end)
@@ -654,6 +690,7 @@ do
         if now - lastCheck < 1 then return end
         lastCheck = now
 
+        if State.loading then return end
         if #State.persist == 0 then return end
         local char = getChar()
         if not char then return end
@@ -678,6 +715,14 @@ local function savePresetsToDisk()
     pcall(function()
         if writefile then writefile(PRESET_FILE_NAME, HttpService:JSONEncode(State.presets)) end
     end)
+end
+
+local function entrySignature(e)
+    local base = tostring(e.id) .. "|" .. tostring(e.targetName)
+    if e.c0 then
+        base = base .. "|" .. table.concat(e.c0, ",")
+    end
+    return base
 end
 
 local function refreshPresetListUI()
@@ -709,10 +754,19 @@ local function refreshPresetListUI()
             end
             State.active = {}
             State.persist = {}
+
+            State.loading = true
+            local seen = {}
             for _, accInfo in ipairs(data) do
-                spawnAccessory(accInfo)
-                task.wait(0.15)
+                local sig = entrySignature(accInfo)
+                if not seen[sig] then
+                    seen[sig] = true
+                    spawnAccessory(accInfo)
+                    task.wait(0.15)
+                end
             end
+            State.loading = false
+
             rebuildPersist()
             updateStatusUI()
         end)
@@ -833,7 +887,7 @@ SavePresetBtn.MouseButton1Click:Connect(function()
     local name = PresetNameBox.Text
     if name ~= "" and #State.active > 0 then
         rebuildPersist()
-        State.presets[name] = State.persist
+        State.presets[name] = deepCopy(State.persist)
         savePresetsToDisk()
         refreshPresetListUI()
         PresetNameBox.Text = ""
