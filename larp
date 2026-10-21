@@ -9,6 +9,36 @@ local PlayerGui   = LocalPlayer:WaitForChild("PlayerGui")
 
 local PRESET_FILE_NAME = "R6_AccessoryPresets_Hanz.json"
 
+-- ============================================================
+-- ANTI-DOBEL INSTANCE: matiin script lama kalau dijalankan ulang
+-- (ini penyebab posisi acak + aksesoris nambah aneh)
+-- ============================================================
+if _G.HanzAccCleanup then
+    pcall(_G.HanzAccCleanup)
+end
+
+local ActiveConnections = {}
+local LoopsRunning      = true
+
+local function track(conn)
+    table.insert(ActiveConnections, conn)
+    return conn
+end
+
+_G.HanzAccCleanup = function()
+    LoopsRunning = false
+    for _, c in ipairs(ActiveConnections) do
+        pcall(function() c:Disconnect() end)
+    end
+    ActiveConnections = {}
+    pcall(function()
+        local pg = LocalPlayer:FindFirstChild("PlayerGui")
+        if pg and pg:FindFirstChild("HanzAccessoryGui") then
+            pg.HanzAccessoryGui:Destroy()
+        end
+    end)
+end
+
 local State = {
     headless    = false,
     active      = {},
@@ -16,7 +46,6 @@ local State = {
     presets     = {},
     selected    = 0,
     currentChar = nil,
-    loading     = false,
 }
 
 if PlayerGui:FindFirstChild("HanzAccessoryGui") then
@@ -203,7 +232,7 @@ local DeleteAccBtn = mkBtn(ControlScroll, UDim2.new(0.31, 0, 0, 22), UDim2.new(0
 
 do
     local dragging, dragInput, dragStart, startPos
-    TitleBar.InputBegan:Connect(function(input)
+    track(TitleBar.InputBegan:Connect(function(input)
         if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
             dragging = true
             dragStart = input.Position
@@ -212,26 +241,26 @@ do
                 if input.UserInputState == Enum.UserInputState.End then dragging = false end
             end)
         end
-    end)
-    TitleBar.InputChanged:Connect(function(input)
+    end))
+    track(TitleBar.InputChanged:Connect(function(input)
         if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then
             dragInput = input
         end
-    end)
-    UserInputService.InputChanged:Connect(function(input)
+    end))
+    track(UserInputService.InputChanged:Connect(function(input)
         if input == dragInput and dragging then
             local delta = input.Position - dragStart
             MainFrame.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
         end
-    end)
+    end))
 
     local minimized = false
-    MinimizeBtn.MouseButton1Click:Connect(function()
+    track(MinimizeBtn.MouseButton1Click:Connect(function()
         minimized = not minimized
         ContentFrame.Visible = not minimized
         MainFrame.Size = minimized and UDim2.new(0, 520, 0, 28) or UDim2.new(0, 520, 0, 270)
         MinimizeBtn.Text = minimized and "+" or "-"
-    end)
+    end))
 end
 
 local function getChar()
@@ -320,6 +349,7 @@ end
 local function waitForRig(char, timeout)
     local t0 = tick()
     while tick() - t0 < (timeout or 15) do
+        if not LoopsRunning then return false end
         if char and char.Parent and char:FindFirstChildOfClass("Humanoid") then
             if findHead(char) or findTorso(char) then
                 return true
@@ -350,11 +380,11 @@ local function showHead(char)
     if face then face.Transparency = 0 end
 end
 
-RunService.RenderStepped:Connect(function()
-    if State.headless then
+track(RunService.RenderStepped:Connect(function()
+    if State.headless and LoopsRunning then
         hideHead(getChar())
     end
-end)
+end))
 
 local function updateStatus(text)
     AccStatusLabel.Text = text or "Aktif: [ Kosong ]"
@@ -370,15 +400,6 @@ local function updateStatusUI()
         local c = State.active[State.selected]
         updateStatus(string.format("No.%d | ID: %s | %s", State.selected, tostring(c.id), c.targetName or "?"))
     end
-end
-
-local function deepCopy(t)
-    if type(t) ~= "table" then return t end
-    local r = {}
-    for k, v in pairs(t) do
-        r[k] = deepCopy(v)
-    end
-    return r
 end
 
 local function snapshotAccessory(acc)
@@ -467,11 +488,6 @@ local function setupWeld(handle, targetPart, savedC0, savedC1)
 end
 
 local function applySavedPosition(weld, char, data)
-    -- Prioritas 1: part tujuan SAMA kayak waktu simpan → pakai offset asli (akurat 100%)
-    if data.targetName and data.c0 and data.c1 and weld.Part0.Name == data.targetName then
-        return
-    end
-    -- Prioritas 2: rootRel (cadangan kalau part beda / rig beda)
     if not data.rootRel then return end
     local root = getRootPart(char)
     if not root then return end
@@ -524,22 +540,9 @@ local function findTargetPart(char, item, handle)
     return nil, "Unknown"
 end
 
-local function markMine(item)
-    pcall(function() item:SetAttribute("HanzAcc", true) end)
-end
-
-local function isMine(inst)
-    local p = inst
-    while p do
-        if p:GetAttribute and p:GetAttribute("HanzAcc") then return true end
-        p = p.Parent
-    end
-    return false
-end
-
 local function processItem(item, char, data)
+    if not LoopsRunning then return end
     if item:IsA("Accessory") or item:IsA("Hat") then
-        markMine(item)
         item.Parent = char
         local handle = item:FindFirstChild("Handle")
         if not handle then return end
@@ -558,7 +561,6 @@ local function processItem(item, char, data)
         })
 
     elseif item:IsA("BasePart") or item:IsA("MeshPart") then
-        markMine(item)
         item.CanCollide = false
         item.Parent = char
         local targetPart = findTorso(char) or findHead(char)
@@ -572,7 +574,6 @@ local function processItem(item, char, data)
         })
 
     elseif item:IsA("Model") or item:IsA("Folder") then
-        markMine(item)
         for _, child in ipairs(item:GetChildren()) do
             processItem(child, char, data)
         end
@@ -612,10 +613,12 @@ local function spawnAccessory(data, char)
 end
 
 local restoreRunning = false
+local lastRestore    = 0
 local function restoreAll(char)
     if restoreRunning then return end
-    if State.loading then return end
+    if tick() - lastRestore < 1.5 then return end -- debounce, anti timpa-tindihan
     restoreRunning = true
+    lastRestore = tick()
 
     for _, acc in ipairs(State.active) do
         pcall(function() if acc.model then acc.model:Destroy() end end)
@@ -633,6 +636,7 @@ local function restoreAll(char)
     for _, item in ipairs(backup) do
         local success = false
         for attempt = 1, 3 do
+            if not LoopsRunning then break end
             if getChar() ~= char then break end
             success = spawnAccessory(item, char)
             if success then break end
@@ -649,32 +653,29 @@ end
 local function hookCharacter(char)
     State.currentChar = char
 
-    char.DescendantAdded:Connect(function(d)
-        -- Abaikan part dari aksesoris kita sendiri (ini yang bikin dobel!)
-        if isMine(d) then return end
+    track(char.DescendantAdded:Connect(function(d)
         if d:IsA("BasePart") then
             local n = d.Name:lower()
             if n:find("head") or n:find("torso") then
                 task.wait(0.6)
-                if State.loading then return end
-                if getChar() == char and #State.persist > 0 then
+                if LoopsRunning and getChar() == char and #State.persist > 0 then
                     restoreAll(char)
                 end
             end
         end
-    end)
+    end))
 
     task.spawn(function()
         if not waitForRig(char, 15) then return end
         task.wait(0.4)
-        if State.loading then return end
+        if not LoopsRunning then return end
         if getChar() ~= char then return end
         restoreAll(char)
     end)
 end
 
 task.spawn(function()
-    while true do
+    while LoopsRunning do
         local char = getChar()
         if char and char ~= State.currentChar then
             hookCharacter(char)
@@ -685,12 +686,12 @@ end)
 
 do
     local lastCheck = 0
-    RunService.Heartbeat:Connect(function()
+    track(RunService.Heartbeat:Connect(function()
+        if not LoopsRunning then return end
         local now = tick()
         if now - lastCheck < 1 then return end
         lastCheck = now
 
-        if State.loading then return end
         if #State.persist == 0 then return end
         local char = getChar()
         if not char then return end
@@ -708,21 +709,18 @@ do
         if broken and not restoreRunning then
             restoreAll(char)
         end
-    end)
+    end))
 end
 
 local function savePresetsToDisk()
     pcall(function()
+        if isfile and isfile(PRESET_FILE_NAME) and readfile and writefile then
+            writefile(PRESET_FILE_NAME .. ".bak", readfile(PRESET_FILE_NAME))
+        end
+    end)
+    pcall(function()
         if writefile then writefile(PRESET_FILE_NAME, HttpService:JSONEncode(State.presets)) end
     end)
-end
-
-local function entrySignature(e)
-    local base = tostring(e.id) .. "|" .. tostring(e.targetName)
-    if e.c0 then
-        base = base .. "|" .. table.concat(e.c0, ",")
-    end
-    return base
 end
 
 local function refreshPresetListUI()
@@ -748,28 +746,19 @@ local function refreshPresetListUI()
         loadBtn.Font = Enum.Font.GothamMedium
         loadBtn.TextXAlignment = Enum.TextXAlignment.Left
         loadBtn.Parent = f
-        loadBtn.MouseButton1Click:Connect(function()
+        track(loadBtn.MouseButton1Click:Connect(function()
             for _, acc in ipairs(State.active) do
                 pcall(function() if acc.model then acc.model:Destroy() end end)
             end
             State.active = {}
             State.persist = {}
-
-            State.loading = true
-            local seen = {}
             for _, accInfo in ipairs(data) do
-                local sig = entrySignature(accInfo)
-                if not seen[sig] then
-                    seen[sig] = true
-                    spawnAccessory(accInfo)
-                    task.wait(0.15)
-                end
+                spawnAccessory(accInfo)
+                task.wait(0.15)
             end
-            State.loading = false
-
             rebuildPersist()
             updateStatusUI()
-        end)
+        end))
 
         local delBtn = Instance.new("TextButton")
         delBtn.Size = UDim2.new(0.28, 0, 0.8, 0)
@@ -782,22 +771,34 @@ local function refreshPresetListUI()
         delBtn.Font = Enum.Font.GothamBold
         delBtn.Parent = f
         Instance.new("UICorner", delBtn).CornerRadius = UDim.new(0, 3)
-        delBtn.MouseButton1Click:Connect(function()
+        track(delBtn.MouseButton1Click:Connect(function()
             State.presets[name] = nil
             savePresetsToDisk()
             refreshPresetListUI()
-        end)
+        end))
     end
     PresetScroll.CanvasSize = UDim2.new(0, 0, 0, count * 24)
 end
 
 local function loadPresetsFromDisk()
-    pcall(function()
+    local ok, err = pcall(function()
         if readfile and isfile and isfile(PRESET_FILE_NAME) then
             local decoded = HttpService:JSONDecode(readfile(PRESET_FILE_NAME))
             if decoded and type(decoded) == "table" then State.presets = decoded end
         end
+        -- Gabung preset yang sempat kesimpen pas file ganti nama
+        if readfile and isfile and isfile("AccessoryPresets.json") then
+            local decoded2 = HttpService:JSONDecode(readfile("AccessoryPresets.json"))
+            if decoded2 and type(decoded2) == "table" then
+                for k, v in pairs(decoded2) do
+                    if State.presets[k] == nil then State.presets[k] = v end
+                end
+            end
+        end
     end)
+    if not ok then
+        print("[Hanz] Gagal baca preset:", err)
+    end
     refreshPresetListUI()
 end
 
@@ -830,13 +831,13 @@ local function refreshCatalogUI()
         b.Font = Enum.Font.GothamMedium
         b.TextXAlignment = Enum.TextXAlignment.Left
         b.Parent = f
-        b.MouseButton1Click:Connect(function()
+        track(b.MouseButton1Click:Connect(function()
             if spawnAccessory({id = item.id}) then
                 State.selected = #State.active
                 rebuildPersist()
                 updateStatusUI()
             end
-        end)
+        end))
     end
     CatalogScroll.CanvasSize = UDim2.new(0, 0, 0, #officialEffectItems * 25)
 end
@@ -858,7 +859,7 @@ local function resetAll()
     updateStatus("Aktif: [ Direset ]")
 end
 
-HeadlessBtn.MouseButton1Click:Connect(function()
+track(HeadlessBtn.MouseButton1Click:Connect(function()
     State.headless = not State.headless
     HeadlessBtn.Text = State.headless and "HEADLESS: ON" or "HEADLESS: OFF"
     HeadlessBtn.TextColor3 = State.headless and Color3.fromRGB(80, 255, 120) or Color3.fromRGB(255, 80, 80)
@@ -867,11 +868,11 @@ HeadlessBtn.MouseButton1Click:Connect(function()
     else
         showHead(getChar())
     end
-end)
+end))
 
-ResetAvatarBtn.MouseButton1Click:Connect(resetAll)
+track(ResetAvatarBtn.MouseButton1Click:Connect(resetAll))
 
-AddAccessoryBtn.MouseButton1Click:Connect(function()
+track(AddAccessoryBtn.MouseButton1Click:Connect(function()
     local id = IdTextBox.Text
     if id ~= "" and tonumber(id) then
         if spawnAccessory({id = tonumber(id)}) then
@@ -881,34 +882,38 @@ AddAccessoryBtn.MouseButton1Click:Connect(function()
         end
         IdTextBox.Text = ""
     end
-end)
+end))
 
-SavePresetBtn.MouseButton1Click:Connect(function()
+track(SavePresetBtn.MouseButton1Click:Connect(function()
     local name = PresetNameBox.Text
     if name ~= "" and #State.active > 0 then
         rebuildPersist()
-        State.presets[name] = deepCopy(State.persist)
+        -- deep copy biar data preset nggak berubah ngikut state
+        local ok, copy = pcall(function()
+            return HttpService:JSONDecode(HttpService:JSONEncode(State.persist))
+        end)
+        State.presets[name] = ok and copy or State.persist
         savePresetsToDisk()
         refreshPresetListUI()
         PresetNameBox.Text = ""
     end
-end)
+end))
 
-PrevAccBtn.MouseButton1Click:Connect(function()
+track(PrevAccBtn.MouseButton1Click:Connect(function()
     if #State.active > 0 then
         State.selected = State.selected - 1
         if State.selected < 1 then State.selected = #State.active end
         updateStatusUI()
     end
-end)
+end))
 
-NextAccBtn.MouseButton1Click:Connect(function()
+track(NextAccBtn.MouseButton1Click:Connect(function()
     if #State.active > 0 then
         State.selected = State.selected + 1
         if State.selected > #State.active then State.selected = 1 end
         updateStatusUI()
     end
-end)
+end))
 
 local function getSelected()
     if State.selected > 0 and State.active[State.selected] then
@@ -933,18 +938,18 @@ local function applyRotation(rx, ry, rz)
     end
 end
 
-XPlusBtn.MouseButton1Click:Connect(function() applyC0Offset(0.1, 0, 0) end)
-XMinBtn.MouseButton1Click:Connect(function() applyC0Offset(-0.1, 0, 0) end)
-YPlusBtn.MouseButton1Click:Connect(function() applyC0Offset(0, 0.1, 0) end)
-YMinBtn.MouseButton1Click:Connect(function() applyC0Offset(0, -0.1, 0) end)
-ZPlusBtn.MouseButton1Click:Connect(function() applyC0Offset(0, 0, 0.1) end)
-ZMinBtn.MouseButton1Click:Connect(function() applyC0Offset(0, 0, -0.1) end)
+track(XPlusBtn.MouseButton1Click:Connect(function() applyC0Offset(0.1, 0, 0) end))
+track(XMinBtn.MouseButton1Click:Connect(function() applyC0Offset(-0.1, 0, 0) end))
+track(YPlusBtn.MouseButton1Click:Connect(function() applyC0Offset(0, 0.1, 0) end))
+track(YMinBtn.MouseButton1Click:Connect(function() applyC0Offset(0, -0.1, 0) end))
+track(ZPlusBtn.MouseButton1Click:Connect(function() applyC0Offset(0, 0, 0.1) end))
+track(ZMinBtn.MouseButton1Click:Connect(function() applyC0Offset(0, 0, -0.1) end))
 
-RotXBtn.MouseButton1Click:Connect(function() applyRotation(math.rad(90), 0, 0) end)
-RotYBtn.MouseButton1Click:Connect(function() applyRotation(0, math.rad(90), 0) end)
-RotZBtn.MouseButton1Click:Connect(function() applyRotation(0, 0, math.rad(90)) end)
+track(RotXBtn.MouseButton1Click:Connect(function() applyRotation(math.rad(90), 0, 0) end))
+track(RotYBtn.MouseButton1Click:Connect(function() applyRotation(0, math.rad(90), 0) end))
+track(RotZBtn.MouseButton1Click:Connect(function() applyRotation(0, 0, math.rad(90)) end))
 
-ScaleUpBtn.MouseButton1Click:Connect(function()
+track(ScaleUpBtn.MouseButton1Click:Connect(function()
     local acc = getSelected()
     if acc and acc.part then
         local mesh = acc.part:FindFirstChildOfClass("SpecialMesh")
@@ -952,9 +957,9 @@ ScaleUpBtn.MouseButton1Click:Connect(function()
         elseif acc.part:IsA("MeshPart") then acc.part.Size = acc.part.Size * 1.1 end
         rebuildPersist()
     end
-end)
+end))
 
-ScaleDownBtn.MouseButton1Click:Connect(function()
+track(ScaleDownBtn.MouseButton1Click:Connect(function()
     local acc = getSelected()
     if acc and acc.part then
         local mesh = acc.part:FindFirstChildOfClass("SpecialMesh")
@@ -962,9 +967,9 @@ ScaleDownBtn.MouseButton1Click:Connect(function()
         elseif acc.part:IsA("MeshPart") then acc.part.Size = acc.part.Size * 0.9 end
         rebuildPersist()
     end
-end)
+end))
 
-DeleteAccBtn.MouseButton1Click:Connect(function()
+track(DeleteAccBtn.MouseButton1Click:Connect(function()
     local acc = getSelected()
     if acc then
         pcall(function() if acc.model then acc.model:Destroy() end end)
@@ -973,7 +978,7 @@ DeleteAccBtn.MouseButton1Click:Connect(function()
         rebuildPersist()
         updateStatusUI()
     end
-end)
+end))
 
 loadPresetsFromDisk()
 refreshCatalogUI()
