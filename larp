@@ -9,9 +9,10 @@ local PlayerGui   = LocalPlayer:WaitForChild("PlayerGui")
 
 local PRESET_FILE_NAME = "R6_AccessoryPresets_Hanz.json"
 
+local AccHolder = workspace:FindFirstChildOfClass("Terrain") or workspace
+
 -- ============================================================
--- ANTI-DOBEL INSTANCE: matiin script lama kalau dijalankan ulang
--- (ini penyebab posisi acak + aksesoris nambah aneh)
+-- ANTI-DOBEL INSTANCE
 -- ============================================================
 if _G.HanzAccCleanup then
     pcall(_G.HanzAccCleanup)
@@ -32,6 +33,13 @@ _G.HanzAccCleanup = function()
     end
     ActiveConnections = {}
     pcall(function()
+        for _, m in ipairs(AccHolder:GetChildren()) do
+            if m:GetAttribute("HanzAcc") then
+                pcall(function() m:Destroy() end)
+            end
+        end
+    end)
+    pcall(function()
         local pg = LocalPlayer:FindFirstChild("PlayerGui")
         if pg and pg:FindFirstChild("HanzAccessoryGui") then
             pg.HanzAccessoryGui:Destroy()
@@ -40,12 +48,13 @@ _G.HanzAccCleanup = function()
 end
 
 local State = {
-    headless    = false,
-    active      = {},
-    persist     = {},
-    presets     = {},
-    selected    = 0,
-    currentChar = nil,
+    headless       = false,
+    active         = {},
+    persist        = {},
+    presets        = {},
+    selected       = 0,
+    currentChar    = nil,
+    loadingPreset  = false,
 }
 
 if PlayerGui:FindFirstChild("HanzAccessoryGui") then
@@ -380,12 +389,6 @@ local function showHead(char)
     if face then face.Transparency = 0 end
 end
 
-track(RunService.RenderStepped:Connect(function()
-    if State.headless and LoopsRunning then
-        hideHead(getChar())
-    end
-end))
-
 local function updateStatus(text)
     AccStatusLabel.Text = text or "Aktif: [ Kosong ]"
 end
@@ -402,108 +405,112 @@ local function updateStatusUI()
     end
 end
 
-local function snapshotAccessory(acc)
-    local snap = {
-        id = acc.id,
-        targetName = acc.targetName,
-        c0 = nil,
-        c1 = nil,
-        rootRel = nil,
-        scale = nil,
-    }
-    if acc.weld and acc.weld:IsA("Weld")
-        and acc.weld.Part0 and acc.weld.Part0.Parent
-        and acc.weld.Part1 and acc.weld.Part1.Parent then
-        snap.c0 = {acc.weld.C0:GetComponents()}
-        snap.c1 = {acc.weld.C1:GetComponents()}
-        local root = getRootPart(acc.weld.Part0.Parent)
-        if root then
-            local worldCF = acc.weld.Part0.CFrame * acc.weld.C0 * acc.weld.C1:Inverse()
-            snap.rootRel = {(root.CFrame:Inverse() * worldCF):GetComponents()}
+-- ============================================================
+-- POSISI: CFRAME-FOLLOW (tanpa Weld sama sekali)
+-- offsetCF = posisi aksesoris relatif ke part target, dihitung
+-- dari rootRel (tahan ganti rig R6/R15 & karakter gerak)
+-- ============================================================
+local function cleanComponents(t)
+    if type(t) ~= "table" then return nil end
+    local out = {}
+    for i = 1, 12 do
+        local v = tonumber(t[i]) or 0
+        if v ~= v or v == math.huge or v == -math.huge then
+            v = 0 -- NaN / inf
         end
-    end
-    if acc.part and acc.part.Parent then
-        local mesh = acc.part:FindFirstChildOfClass("SpecialMesh")
-        if mesh then
-            snap.scale = {mesh.Scale.X, mesh.Scale.Y, mesh.Scale.Z}
-        elseif acc.part:IsA("MeshPart") then
-            snap.scale = {acc.part.Size.X, acc.part.Size.Y, acc.part.Size.Z}
+        if math.abs(v) > 1e6 then
+            v = 0
         end
+        out[i] = v
     end
-    return snap
+    return out
 end
 
-local function rebuildPersist()
-    State.persist = {}
-    for _, acc in ipairs(State.active) do
-        if acc.part and acc.part.Parent then
-            table.insert(State.persist, snapshotAccessory(acc))
-        end
+local function computeOffset(targetPart, char, data)
+    if not targetPart or not char then return nil end
+
+    local c1 = nil
+    if data.c1 then
+        local c1c = cleanComponents(data.c1)
+        if c1c then c1 = CFrame.new(table.unpack(c1c)) end
     end
-end
+    if not c1 then c1 = CFrame.new(0, 0, 0) end
 
-local function setupWeld(handle, targetPart, savedC0, savedC1)
-    for _, v in ipairs(handle:GetChildren()) do
-        if v:IsA("Weld") or v:IsA("WeldConstraint") or v:IsA("Motor6D") then
-            v:Destroy()
-        end
-    end
-
-    local weld = Instance.new("Weld")
-    weld.Name = "HanzWeld"
-    weld.Part0 = targetPart
-    weld.Part1 = handle
-    weld.Parent = handle
-
-    if savedC0 and savedC1 then
-        weld.C0 = CFrame.new(table.unpack(savedC0))
-        weld.C1 = CFrame.new(table.unpack(savedC1))
-        return weld
-    end
-
-    local handleAtt = handle:FindFirstChildOfClass("Attachment")
-    if handleAtt then
-        local targetAtt = targetPart:FindFirstChild(handleAtt.Name)
-        if not targetAtt then
-            for _, d in ipairs(targetPart:GetDescendants()) do
-                if d:IsA("Attachment") and d.Name == handleAtt.Name then
-                    targetAtt = d
-                    break
+    local desiredWorld
+    if data.rootRel then
+        local rc = cleanComponents(data.rootRel)
+        local root = getRootPart(char)
+        if not rc or not root then return nil end
+        desiredWorld = root.CFrame * CFrame.new(table.unpack(rc))
+    elseif data.c0 then
+        local c0c = cleanComponents(data.c0)
+        if not c0c then return nil end
+        desiredWorld = targetPart.CFrame * CFrame.new(table.unpack(c0c)) * c1:Inverse()
+    else
+        -- Posisi awal: cocokkan attachment bawaan aksesoris
+        local handle = data._handle
+        if handle then
+            local handleAtt = handle:FindFirstChildOfClass("Attachment")
+            if handleAtt then
+                local targetAtt = targetPart:FindFirstChild(handleAtt.Name)
+                if not targetAtt then
+                    for _, d in ipairs(targetPart:GetDescendants()) do
+                        if d:IsA("Attachment") and d.Name == handleAtt.Name then
+                            targetAtt = d
+                            break
+                        end
+                    end
+                end
+                if targetAtt then
+                    desiredWorld = targetPart.CFrame * targetAtt.CFrame * handleAtt.CFrame:Inverse()
+                else
+                    desiredWorld = targetPart.CFrame * handleAtt.CFrame
                 end
             end
         end
-        if targetAtt and targetAtt:IsA("Attachment") then
-            weld.C0 = targetAtt.CFrame
-            weld.C1 = handleAtt.CFrame
-            return weld
+        if not desiredWorld then
+            desiredWorld = targetPart.CFrame * CFrame.new(0, 0.5, 0)
         end
-        weld.C0 = handleAtt.CFrame
-        weld.C1 = CFrame.new(0, 0, 0)
-        return weld
     end
 
-    weld.C0 = CFrame.new(0, 0.5, 0)
-    weld.C1 = CFrame.new(0, 0, 0)
-    return weld
+    -- handle.CF = part0.CF * offset  →  offset = part0.CF:Inverse() * desiredWorld * c1:Inverse()
+    return targetPart.CFrame:Inverse() * desiredWorld * c1:Inverse()
 end
 
-local function applySavedPosition(weld, char, data)
-    if not data.rootRel then return end
-    local root = getRootPart(char)
-    if not root then return end
-    local c1 = (data.c1 and CFrame.new(table.unpack(data.c1))) or CFrame.new(0, 0, 0)
-    local worldCF = root.CFrame * CFrame.new(table.unpack(data.rootRel))
-    weld.C0 = weld.Part0.CFrame:Inverse() * worldCF * c1
-    weld.C1 = c1
+local function snapshotAccessory(acc)
+    return {
+        id = acc.id,
+        targetName = acc.targetName,
+        c0 = nil,
+        c1 = acc.c1Comp,
+        rootRel = acc.rootRelComp,
+        scale = acc.scaleComp,
+    }
+end
+
+local function rebuildPersist()
+    local newPersist = {}
+    for _, acc in ipairs(State.active) do
+        if acc.part and acc.part.Parent then
+            table.insert(newPersist, snapshotAccessory(acc))
+        end
+    end
+    State.persist = newPersist
 end
 
 local function applyScale(part, scaleTable)
     if not part or not scaleTable then return end
+    local s = {}
+    for i = 1, 3 do
+        local v = tonumber(scaleTable[i]) or 1
+        if v ~= v or math.abs(v) > 1e5 then v = 1 end
+        s[i] = v
+    end
     local mesh = part:FindFirstChildOfClass("SpecialMesh")
     if mesh then
-        mesh.Scale = Vector3.new(table.unpack(scaleTable))
+        mesh.Scale = Vector3.new(s[1], s[2], s[3])
     elseif part:IsA("MeshPart") then
-        part.Size = Vector3.new(table.unpack(scaleTable))
+        part.Size = Vector3.new(s[1], s[2], s[3])
     end
 end
 
@@ -540,10 +547,55 @@ local function findTargetPart(char, item, handle)
     return nil, "Unknown"
 end
 
+local function prepPart(part)
+    part.CanCollide = false
+    part.CanQuery = false
+    part.CanTouch = false
+    part.Massless = true
+    part.Anchored = true -- posisi dikendaliin manual tiap frame
+end
+
+local function registerAccessory(item, part, targetPart, targetName, char, data)
+    data._handle = part
+    local offset = computeOffset(targetPart, char, data)
+
+    local acc = {
+        id = tostring(data.id),
+        model = item,
+        part = part,
+        targetPart = targetPart,
+        targetName = targetName,
+        offsetCF = offset,
+        c1Comp = data.c1 and cleanComponents(data.c1) or nil,
+        rootRelComp = data.rootRel and cleanComponents(data.rootRel) or nil,
+        scaleComp = data.scale or nil,
+        baseTransparency = part.Transparency,
+    }
+    table.insert(State.active, acc)
+
+    if offset then
+        part.CFrame = targetPart.CFrame * offset
+    end
+
+    -- Kalau data posisi ada tapi root belum siap, coba ulang sebentar
+    if not offset and (data.rootRel or data.c0) then
+        task.delay(0.5, function()
+            if not LoopsRunning then return end
+            if not acc.part or not acc.part.Parent then return end
+            local tp = acc.targetPart and acc.targetPart.Parent and acc.targetPart or findTorso(char) or findHead(char)
+            if not tp then return end
+            acc.targetPart = tp
+            acc.offsetCF = computeOffset(tp, char, data)
+            if acc.offsetCF then
+                acc.part.CFrame = tp.CFrame * acc.offsetCF
+            end
+        end)
+    end
+end
+
 local function processItem(item, char, data)
     if not LoopsRunning then return end
     if item:IsA("Accessory") or item:IsA("Hat") then
-        item.Parent = char
         local handle = item:FindFirstChild("Handle")
         if not handle then return end
         local targetPart, targetName = findTargetPart(char, item, handle)
@@ -552,26 +604,20 @@ local function processItem(item, char, data)
             targetName = targetPart and targetPart.Name or "Torso"
         end
         if not targetPart then return end
-        local weld = setupWeld(handle, targetPart, data.c0, data.c1)
-        applySavedPosition(weld, char, data)
+        prepPart(handle)
+        item:SetAttribute("HanzAcc", true)
+        item.Parent = AccHolder
+        registerAccessory(item, handle, targetPart, targetName, char, data)
         if data.scale then applyScale(handle, data.scale) end
-        table.insert(State.active, {
-            id = tostring(data.id), model = item, part = handle,
-            weld = weld, targetName = targetName,
-        })
 
     elseif item:IsA("BasePart") or item:IsA("MeshPart") then
-        item.CanCollide = false
-        item.Parent = char
+        prepPart(item)
+        item:SetAttribute("HanzAcc", true)
+        item.Parent = AccHolder
         local targetPart = findTorso(char) or findHead(char)
         if not targetPart then return end
-        local weld = setupWeld(item, targetPart, data.c0, data.c1)
-        applySavedPosition(weld, char, data)
+        registerAccessory(item, item, targetPart, targetPart.Name, char, data)
         if data.scale then applyScale(item, data.scale) end
-        table.insert(State.active, {
-            id = tostring(data.id), model = item, part = item,
-            weld = weld, targetName = targetPart.Name,
-        })
 
     elseif item:IsA("Model") or item:IsA("Folder") then
         for _, child in ipairs(item:GetChildren()) do
@@ -612,11 +658,45 @@ local function spawnAccessory(data, char)
     return #State.active > before
 end
 
+-- ============================================================
+-- FOLLOW LOOP: posisi ditempel tiap frame, tanpa weld
+-- ============================================================
+track(RunService.RenderStepped:Connect(function()
+    if not LoopsRunning then return end
+
+    local char = getChar()
+    local hum = char and char:FindFirstChildOfClass("Humanoid")
+    local alive = char ~= nil and hum ~= nil and hum.Health > 0
+        and hum:GetState() ~= Enum.HumanoidStateType.Dead
+
+    if State.headless then
+        hideHead(char)
+    end
+
+    for _, acc in ipairs(State.active) do
+        local part = acc.part
+        if part and part.Parent then
+            if not alive then
+                part.Transparency = 1 -- sembunyi pas mati/spectate
+            else
+                if part.Transparency ~= acc.baseTransparency then
+                    part.Transparency = acc.baseTransparency
+                end
+                local tp = acc.targetPart
+                if tp and tp.Parent and acc.offsetCF then
+                    part.CFrame = tp.CFrame * acc.offsetCF
+                end
+            end
+        end
+    end
+end))
+
 local restoreRunning = false
 local lastRestore    = 0
 local function restoreAll(char)
     if restoreRunning then return end
-    if tick() - lastRestore < 1.5 then return end -- debounce, anti timpa-tindihan
+    if State.loadingPreset then return end
+    if tick() - lastRestore < 1.5 then return end
     restoreRunning = true
     lastRestore = tick()
 
@@ -650,27 +730,79 @@ local function restoreAll(char)
     restoreRunning = false
 end
 
+-- Rebind: ganti target part ke rig baru TANPA re-download (posisi tetap akurat)
+local function rebindAccessories(char)
+    if #State.active == 0 then return true end
+    for _, acc in ipairs(State.active) do
+        if not acc.part or not acc.part.Parent then
+            return false
+        end
+    end
+    for _, acc in ipairs(State.active) do
+        local newTarget
+        if acc.targetName and acc.targetName:lower():find("head") then
+            newTarget = findHead(char)
+        else
+            newTarget = findTorso(char)
+        end
+        if not newTarget then
+            newTarget = findTorso(char) or findHead(char)
+        end
+        if not newTarget then return false end
+
+        local data = {
+            c1 = acc.c1Comp,
+            rootRel = acc.rootRelComp,
+            _handle = acc.part,
+        }
+        local offset = computeOffset(newTarget, char, data)
+        if offset then
+            acc.targetPart = newTarget
+            acc.offsetCF = offset
+        else
+            return false
+        end
+    end
+    return true
+end
+
+local CORE_PART_NAMES = {
+    Head = true, Torso = true, UpperTorso = true,
+    LowerTorso = true, HumanoidRootPart = true,
+}
+
 local function hookCharacter(char)
     State.currentChar = char
 
     track(char.DescendantAdded:Connect(function(d)
-        if d:IsA("BasePart") then
-            local n = d.Name:lower()
-            if n:find("head") or n:find("torso") then
-                task.wait(0.6)
-                if LoopsRunning and getChar() == char and #State.persist > 0 then
+        if d:IsA("BasePart") and d.Parent == char and CORE_PART_NAMES[d.Name] then
+            task.wait(0.6)
+            if not LoopsRunning or State.loadingPreset then return end
+            if getChar() ~= char then return end
+            if #State.persist == 0 then return end
+            if #State.active > 0 then
+                if not rebindAccessories(char) then
                     restoreAll(char)
                 end
+            else
+                restoreAll(char)
             end
         end
     end))
 
     task.spawn(function()
         if not waitForRig(char, 15) then return end
-        task.wait(0.4)
-        if not LoopsRunning then return end
+        task.wait(0.3)
+        if not LoopsRunning or State.loadingPreset then return end
         if getChar() ~= char then return end
-        restoreAll(char)
+        if #State.persist == 0 then return end
+        if #State.active > 0 then
+            if not rebindAccessories(char) then
+                restoreAll(char)
+            end
+        else
+            restoreAll(char)
+        end
     end)
 end
 
@@ -684,10 +816,12 @@ task.spawn(function()
     end
 end)
 
+-- Watchdog: part musnah → respawn; target hilang → rebind
 do
     local lastCheck = 0
     track(RunService.Heartbeat:Connect(function()
         if not LoopsRunning then return end
+        if State.loadingPreset then return end
         local now = tick()
         if now - lastCheck < 1 then return end
         lastCheck = now
@@ -696,18 +830,30 @@ do
         local char = getChar()
         if not char then return end
 
-        local broken = (#State.active < #State.persist)
-        if not broken then
-            for _, acc in ipairs(State.active) do
-                if not acc.part or not acc.part.Parent
-                    or not acc.weld or not acc.weld.Parent then
-                    broken = true
-                    break
-                end
+        local needRespawn = false
+        local needRebind = false
+        for _, acc in ipairs(State.active) do
+            if not acc.part or not acc.part.Parent then
+                needRespawn = true
+                break
+            end
+            if not acc.targetPart or not acc.targetPart.Parent then
+                needRebind = true
             end
         end
-        if broken and not restoreRunning then
-            restoreAll(char)
+
+        if #State.active < #State.persist then
+            needRespawn = true
+        end
+
+        if needRespawn then
+            if not restoreRunning then
+                restoreAll(char)
+            end
+        elseif needRebind then
+            if not rebindAccessories(char) then
+                restoreAll(char)
+            end
         end
     end))
 end
@@ -718,9 +864,14 @@ local function savePresetsToDisk()
             writefile(PRESET_FILE_NAME .. ".bak", readfile(PRESET_FILE_NAME))
         end
     end)
-    pcall(function()
-        if writefile then writefile(PRESET_FILE_NAME, HttpService:JSONEncode(State.presets)) end
+    local ok, err = pcall(function()
+        if writefile then
+            writefile(PRESET_FILE_NAME, HttpService:JSONEncode(State.presets))
+        end
     end)
+    if not ok then
+        print("[Hanz] Gagal tulis preset:", err)
+    end
 end
 
 local function refreshPresetListUI()
@@ -747,16 +898,20 @@ local function refreshPresetListUI()
         loadBtn.TextXAlignment = Enum.TextXAlignment.Left
         loadBtn.Parent = f
         track(loadBtn.MouseButton1Click:Connect(function()
+            -- LOAD ATOMIK: watchdog & restore dikunci sampai selesai
+            State.loadingPreset = true
             for _, acc in ipairs(State.active) do
                 pcall(function() if acc.model then acc.model:Destroy() end end)
             end
             State.active = {}
             State.persist = {}
+            State.selected = 0
             for _, accInfo in ipairs(data) do
                 spawnAccessory(accInfo)
-                task.wait(0.15)
+                task.wait(0.12)
             end
             rebuildPersist()
+            State.loadingPreset = false
             updateStatusUI()
         end))
 
@@ -786,7 +941,6 @@ local function loadPresetsFromDisk()
             local decoded = HttpService:JSONDecode(readfile(PRESET_FILE_NAME))
             if decoded and type(decoded) == "table" then State.presets = decoded end
         end
-        -- Gabung preset yang sempat kesimpen pas file ganti nama
         if readfile and isfile and isfile("AccessoryPresets.json") then
             local decoded2 = HttpService:JSONDecode(readfile("AccessoryPresets.json"))
             if decoded2 and type(decoded2) == "table" then
@@ -843,12 +997,14 @@ local function refreshCatalogUI()
 end
 
 local function resetAll()
+    State.loadingPreset = true
     for _, acc in ipairs(State.active) do
         pcall(function() if acc.model then acc.model:Destroy() end end)
     end
     State.active = {}
     State.persist = {}
     State.selected = 0
+    State.loadingPreset = false
 
     if State.headless then
         State.headless = false
@@ -888,7 +1044,6 @@ track(SavePresetBtn.MouseButton1Click:Connect(function()
     local name = PresetNameBox.Text
     if name ~= "" and #State.active > 0 then
         rebuildPersist()
-        -- deep copy biar data preset nggak berubah ngikut state
         local ok, copy = pcall(function()
             return HttpService:JSONDecode(HttpService:JSONEncode(State.persist))
         end)
@@ -922,18 +1077,19 @@ local function getSelected()
     return nil
 end
 
+-- Posisi digeser = offsetCF dikali perubahan lokal, lalu persist
 local function applyC0Offset(dx, dy, dz)
     local acc = getSelected()
-    if acc and acc.weld and acc.weld:IsA("Weld") then
-        acc.weld.C0 = acc.weld.C0 * CFrame.new(dx, dy, dz)
+    if acc and acc.offsetCF then
+        acc.offsetCF = acc.offsetCF * CFrame.new(dx, dy, dz)
         rebuildPersist()
     end
 end
 
 local function applyRotation(rx, ry, rz)
     local acc = getSelected()
-    if acc and acc.weld and acc.weld:IsA("Weld") then
-        acc.weld.C0 = acc.weld.C0 * CFrame.Angles(rx, ry, rz)
+    if acc and acc.offsetCF then
+        acc.offsetCF = acc.offsetCF * CFrame.Angles(rx, ry, rz)
         rebuildPersist()
     end
 end
@@ -955,6 +1111,9 @@ track(ScaleUpBtn.MouseButton1Click:Connect(function()
         local mesh = acc.part:FindFirstChildOfClass("SpecialMesh")
         if mesh then mesh.Scale = mesh.Scale * 1.1
         elseif acc.part:IsA("MeshPart") then acc.part.Size = acc.part.Size * 1.1 end
+        if acc.scaleComp then
+            for i = 1, 3 do acc.scaleComp[i] = (tonumber(acc.scaleComp[i]) or 1) * 1.1 end
+        end
         rebuildPersist()
     end
 end))
@@ -965,6 +1124,9 @@ track(ScaleDownBtn.MouseButton1Click:Connect(function()
         local mesh = acc.part:FindFirstChildOfClass("SpecialMesh")
         if mesh then mesh.Scale = mesh.Scale * 0.9
         elseif acc.part:IsA("MeshPart") then acc.part.Size = acc.part.Size * 0.9 end
+        if acc.scaleComp then
+            for i = 1, 3 do acc.scaleComp[i] = (tonumber(acc.scaleComp[i]) or 1) * 0.9 end
+        end
         rebuildPersist()
     end
 end))
@@ -988,4 +1150,4 @@ if c then
     hookCharacter(c)
 end
 
-print("[Hanz] loaded | Character:", c and c.Name or "menunggu spawn")
+print("[Hanz] ultimate loaded | Character:", c and c.Name or "menunggu spawn")
