@@ -3,6 +3,7 @@ local UserInputService = game:GetService("UserInputService")
 local InsertService    = game:GetService("InsertService")
 local HttpService      = game:GetService("HttpService")
 local RunService       = game:GetService("RunService")
+local TextChatService  = game:GetService("TextChatService")
 
 local LocalPlayer = Players.LocalPlayer
 local PlayerGui   = LocalPlayer:WaitForChild("PlayerGui")
@@ -11,9 +12,6 @@ local PRESET_FILE_NAME = "R6_AccessoryPresets_Hanz.json"
 
 local AccHolder = workspace:FindFirstChildOfClass("Terrain") or workspace
 
--- ============================================================
--- ANTI-DOBEL INSTANCE
--- ============================================================
 if _G.HanzAccCleanup then
     pcall(_G.HanzAccCleanup)
 end
@@ -40,6 +38,18 @@ _G.HanzAccCleanup = function()
         end
     end)
     pcall(function()
+        for _, m in ipairs(workspace:GetChildren()) do
+            if m.Name:sub(1, 9) == "HanzClone" then
+                pcall(function() m:Destroy() end)
+            end
+        end
+    end)
+    pcall(function()
+        if CloneState and CloneState.model then
+            pcall(function() CloneState.model:Destroy() end)
+        end
+    end)
+    pcall(function()
         local pg = LocalPlayer:FindFirstChild("PlayerGui")
         if pg and pg:FindFirstChild("HanzAccessoryGui") then
             pg.HanzAccessoryGui:Destroy()
@@ -48,13 +58,25 @@ _G.HanzAccCleanup = function()
 end
 
 local State = {
-    headless       = false,
-    active         = {},
-    persist        = {},
-    presets        = {},
-    selected       = 0,
-    currentChar    = nil,
-    loadingPreset  = false,
+    headless      = false,
+    active        = {},
+    persist       = {},
+    presets       = {},
+    selected      = 0,
+    currentChar   = nil,
+    loadingPreset = false,
+}
+
+local CloneState = {
+    model      = nil,
+    accFollow  = nil,
+    animator   = nil,
+    posing     = false,
+}
+
+local CloneControl = {
+    enabled = false,
+    speed   = 30,
 }
 
 if PlayerGui:FindFirstChild("HanzAccessoryGui") then
@@ -67,8 +89,8 @@ ScreenGui.ResetOnSpawn = false
 ScreenGui.Parent = PlayerGui
 
 local MainFrame = Instance.new("Frame")
-MainFrame.Size = UDim2.new(0, 520, 0, 270)
-MainFrame.Position = UDim2.new(0.5, -260, 0.5, -135)
+MainFrame.Size = UDim2.new(0, 520, 0, 418)
+MainFrame.Position = UDim2.new(0.5, -260, 0.5, -209)
 MainFrame.BackgroundColor3 = Color3.fromRGB(15, 15, 20)
 MainFrame.BorderColor3 = Color3.fromRGB(60, 120, 255)
 MainFrame.BorderSizePixel = 1
@@ -87,7 +109,7 @@ local TitleLabel = Instance.new("TextLabel")
 TitleLabel.Size = UDim2.new(1, -35, 1, 0)
 TitleLabel.Position = UDim2.new(0, 10, 0, 0)
 TitleLabel.BackgroundTransparency = 1
-TitleLabel.Text = "ACCESSORY MANAGER"
+TitleLabel.Text = "ACCESSORY MANAGER + CLONE CONTROL + CHAT"
 TitleLabel.TextColor3 = Color3.fromRGB(80, 255, 120)
 TitleLabel.TextSize = 10
 TitleLabel.Font = Enum.Font.GothamBold
@@ -112,14 +134,14 @@ ContentFrame.BackgroundTransparency = 1
 ContentFrame.Parent = MainFrame
 
 local LeftCol = Instance.new("Frame")
-LeftCol.Size = UDim2.new(0.48, 0, 0.95, 0)
-LeftCol.Position = UDim2.new(0.015, 0, 0.025, 0)
+LeftCol.Size = UDim2.new(0.48, 0, 1, -106)
+LeftCol.Position = UDim2.new(0.015, 0, 0, 2)
 LeftCol.BackgroundTransparency = 1
 LeftCol.Parent = ContentFrame
 
 local RightCol = Instance.new("Frame")
-RightCol.Size = UDim2.new(0.48, 0, 0.95, 0)
-RightCol.Position = UDim2.new(0.505, 0, 0.025, 0)
+RightCol.Size = UDim2.new(0.48, 0, 1, -106)
+RightCol.Position = UDim2.new(0.505, 0, 0, 2)
 RightCol.BackgroundTransparency = 1
 RightCol.Parent = ContentFrame
 
@@ -138,6 +160,66 @@ local function mkBtn(parent, size, pos, text, color, bg)
     Instance.new("UICorner", b).CornerRadius = UDim.new(0, 4)
     return b
 end
+
+local ChatBar = Instance.new("Frame")
+ChatBar.Size = UDim2.new(1, -16, 0, 24)
+ChatBar.Position = UDim2.new(0, 8, 1, -84)
+ChatBar.BackgroundTransparency = 1
+ChatBar.Parent = ContentFrame
+
+local ChatTargetBtn = mkBtn(ChatBar, UDim2.new(0.22, 0, 1, 0), UDim2.new(0, 0, 0, 0), "TARGET: KITA", Color3.fromRGB(150, 180, 255))
+
+local ChatBox = Instance.new("TextBox")
+ChatBox.Size = UDim2.new(0.52, 0, 1, 0)
+ChatBox.Position = UDim2.new(0.23, 0, 0, 0)
+ChatBox.BackgroundColor3 = Color3.fromRGB(10, 10, 15)
+ChatBox.BorderColor3 = Color3.fromRGB(80, 80, 110)
+ChatBox.BorderSizePixel = 1
+ChatBox.PlaceholderText = "Ketik chat..."
+ChatBox.PlaceholderColor3 = Color3.fromRGB(120, 120, 140)
+ChatBox.Text = ""
+ChatBox.TextColor3 = Color3.fromRGB(255, 255, 255)
+ChatBox.TextSize = 10
+ChatBox.Font = Enum.Font.GothamMedium
+ChatBox.ClearTextOnFocus = false
+ChatBox.Parent = ChatBar
+Instance.new("UICorner", ChatBox).CornerRadius = UDim.new(0, 5)
+
+local ChatSendBtn = mkBtn(ChatBar, UDim2.new(0.23, 0, 1, 0), UDim2.new(0.76, 0, 0, 0), "KIRIM CHAT", Color3.fromRGB(255, 220, 100))
+
+local CloneBar = Instance.new("Frame")
+CloneBar.Size = UDim2.new(1, -16, 0, 24)
+CloneBar.Position = UDim2.new(0, 8, 1, -56)
+CloneBar.BackgroundTransparency = 1
+CloneBar.Parent = ContentFrame
+
+local CloneNameBox = Instance.new("TextBox")
+CloneNameBox.Size = UDim2.new(0.5, 0, 1, 0)
+CloneNameBox.Position = UDim2.new(0, 0, 0, 0)
+CloneNameBox.BackgroundColor3 = Color3.fromRGB(10, 10, 15)
+CloneNameBox.BorderColor3 = Color3.fromRGB(80, 80, 110)
+CloneNameBox.BorderSizePixel = 1
+CloneNameBox.PlaceholderText = "Nama clone (kosong = nama kamu)..."
+CloneNameBox.PlaceholderColor3 = Color3.fromRGB(120, 120, 140)
+CloneNameBox.Text = ""
+CloneNameBox.TextColor3 = Color3.fromRGB(255, 255, 255)
+CloneNameBox.TextSize = 10
+CloneNameBox.Font = Enum.Font.GothamMedium
+CloneNameBox.ClearTextOnFocus = false
+CloneNameBox.Parent = CloneBar
+Instance.new("UICorner", CloneNameBox).CornerRadius = UDim.new(0, 5)
+
+local CloneBtn       = mkBtn(CloneBar, UDim2.new(0.24, 0, 1, 0), UDim2.new(0.51, 0, 0, 0), "CLONE", Color3.fromRGB(80, 255, 120))
+local RemoveCloneBtn = mkBtn(CloneBar, UDim2.new(0.24, 0, 1, 0), UDim2.new(0.76, 0, 0, 0), "HAPUS CLONE", Color3.fromRGB(255, 80, 80), Color3.fromRGB(40, 20, 20))
+
+local MoveBar = Instance.new("Frame")
+MoveBar.Size = UDim2.new(1, -16, 0, 24)
+MoveBar.Position = UDim2.new(0, 8, 1, -28)
+MoveBar.BackgroundTransparency = 1
+MoveBar.Parent = ContentFrame
+
+local ControlBtn    = mkBtn(MoveBar, UDim2.new(0.48, 0, 1, 0), UDim2.new(0, 0, 0, 0), "CONTROL: OFF", Color3.fromRGB(255, 120, 80))
+local GantiEmoteBtn = mkBtn(MoveBar, UDim2.new(0.48, 0, 1, 0), UDim2.new(0.52, 0, 0, 0), "GANTI EMOTE", Color3.fromRGB(120, 200, 255))
 
 local HeadlessBtn    = mkBtn(LeftCol, UDim2.new(0.48, 0, 0, 24), UDim2.new(0, 0, 0, 0), "HEADLESS: OFF", Color3.fromRGB(255, 80, 80))
 local ResetAvatarBtn = mkBtn(LeftCol, UDim2.new(0.48, 0, 0, 24), UDim2.new(0.52, 0, 0, 0), "RESET", Color3.fromRGB(255, 200, 120), Color3.fromRGB(30, 22, 22))
@@ -219,7 +301,7 @@ ControlScroll.Size = UDim2.new(1, 0, 1, -124)
 ControlScroll.Position = UDim2.new(0, 0, 0, 124)
 ControlScroll.BackgroundColor3 = Color3.fromRGB(10, 10, 14)
 ControlScroll.BorderSizePixel = 1
-ControlScroll.CanvasSize = UDim2.new(0, 0, 0, 140)
+ControlScroll.CanvasSize = UDim2.new(0, 0, 0, 164)
 ControlScroll.ScrollBarThickness = 4
 ControlScroll.Parent = RightCol
 
@@ -238,6 +320,7 @@ local RotXBtn      = mkBtn(ControlScroll, UDim2.new(0.31, 0, 0, 22), UDim2.new(0
 local RotYBtn      = mkBtn(ControlScroll, UDim2.new(0.31, 0, 0, 22), UDim2.new(0, 0, 0, 108), "ROT Y 90", Color3.fromRGB(200, 100, 255))
 local RotZBtn      = mkBtn(ControlScroll, UDim2.new(0.31, 0, 0, 22), UDim2.new(0.34, 0, 0, 108), "ROT Z 90", Color3.fromRGB(200, 100, 255))
 local DeleteAccBtn = mkBtn(ControlScroll, UDim2.new(0.31, 0, 0, 22), UDim2.new(0.68, 0, 0, 108), "HAPUS", Color3.fromRGB(255, 80, 80), Color3.fromRGB(40, 20, 20))
+local TargetAccBtn = mkBtn(ControlScroll, UDim2.new(1, 0, 0, 22), UDim2.new(0, 0, 0, 134), "TARGET PART: AUTO", Color3.fromRGB(255, 255, 160))
 
 do
     local dragging, dragInput, dragStart, startPos
@@ -267,7 +350,7 @@ do
     track(MinimizeBtn.MouseButton1Click:Connect(function()
         minimized = not minimized
         ContentFrame.Visible = not minimized
-        MainFrame.Size = minimized and UDim2.new(0, 520, 0, 28) or UDim2.new(0, 520, 0, 270)
+        MainFrame.Size = minimized and UDim2.new(0, 520, 0, 28) or UDim2.new(0, 520, 0, 418)
         MinimizeBtn.Text = minimized and "+" or "-"
     end))
 end
@@ -277,7 +360,6 @@ local function getChar()
     if c and c.Parent and c:FindFirstChildOfClass("Humanoid") then
         return c
     end
-
     for _, folderName in ipairs({"Players", "PlayerCache", "Rigs"}) do
         local folder = workspace:FindFirstChild(folderName)
         if folder and folder:IsA("Folder") then
@@ -287,7 +369,6 @@ local function getChar()
             end
         end
     end
-
     local cam = workspace.CurrentCamera
     if cam then
         local subj = cam.CameraSubject
@@ -306,15 +387,21 @@ local function getChar()
             end
         end
     end
-
     for _, obj in ipairs(workspace:GetDescendants()) do
         if obj:IsA("Model") and obj.Name == LocalPlayer.Name
             and obj:FindFirstChildOfClass("Humanoid") then
             return obj
         end
     end
-
     return nil
+end
+
+local function getCharFast()
+    local c = LocalPlayer.Character
+    if c and c.Parent and c:FindFirstChildOfClass("Humanoid") then
+        return c
+    end
+    return State.currentChar
 end
 
 local function findHead(char)
@@ -355,6 +442,76 @@ local function getRootPart(char)
     return findTorso(char)
 end
 
+local function findPartByRole(char, role)
+    if role == "Head" then
+        return findHead(char)
+    elseif role == "UpperTorso" then
+        local p = char:FindFirstChild("UpperTorso")
+        if p and p:IsA("BasePart") then return p end
+        local t = char:FindFirstChild("Torso")
+        if t and t:IsA("BasePart") then return t end
+        return nil
+    elseif role == "LowerTorso" then
+        local p = char:FindFirstChild("LowerTorso")
+        if p and p:IsA("BasePart") then return p end
+        local t = char:FindFirstChild("Torso")
+        if t and t:IsA("BasePart") then return t end
+        return nil
+    elseif role == "HumanoidRootPart" then
+        return getRootPart(char)
+    end
+    return nil
+end
+
+local function partRoleOf(part)
+    if not part then return nil end
+    local n = part.Name:lower()
+    if n:find("head") then return "Head" end
+    if n:find("upper") or n == "torso" then return "UpperTorso" end
+    if n:find("lower") then return "LowerTorso" end
+    if n:find("root") then return "HumanoidRootPart" end
+    return nil
+end
+
+local function heuristicRole(attName)
+    local n = attName:lower()
+    if n:find("hat") or n:find("hair") or n:find("face") or n:find("head") then return "Head" end
+    if n:find("neck") or n:find("shoulder") or n:find("collar")
+        or n:find("bodyfront") or n:find("bodyback") then return "UpperTorso" end
+    if n:find("waist") then return "LowerTorso" end
+    return nil
+end
+
+local ATTACH_TO_PART = {
+    HatAttachment        = "Head",
+    HairAttachment       = "Head",
+    FaceAttachment       = "Head",
+    FaceFrontAttachment  = "Head",
+    FaceCenterAttachment = "Head",
+    NeckAttachment           = "UpperTorso",
+    LeftShoulderAttachment   = "UpperTorso",
+    RightShoulderAttachment  = "UpperTorso",
+    LeftCollarAttachment     = "UpperTorso",
+    RightCollarAttachment    = "UpperTorso",
+    BodyFrontAttachment      = "UpperTorso",
+    BodyBackAttachment       = "UpperTorso",
+    WaistAttachment          = "LowerTorso",
+    WaistCenterAttachment    = "LowerTorso",
+    WaistFrontAttachment     = "LowerTorso",
+    WaistBackAttachment      = "LowerTorso",
+}
+
+-- tinggi setengah kepala VISUAL (part size × skala mesh kalau ada)
+-- ini kunci buat rig R6 mentah 1x1x1 + SpecialMesh 1.25 kayak Evade
+local function visualHalfY(part)
+    if not part then return 0.5 end
+    local mesh = part:FindFirstChildOfClass("SpecialMesh")
+    if mesh and mesh.Scale then
+        return (part.Size.Y * math.abs(mesh.Scale.Y)) / 2
+    end
+    return part.Size.Y / 2
+end
+
 local function waitForRig(char, timeout)
     local t0 = tick()
     while tick() - t0 < (timeout or 15) do
@@ -369,24 +526,86 @@ local function waitForRig(char, timeout)
     return false
 end
 
-local function hideHead(char)
+-- ============================================================
+-- HEADLESS (nuclear: head + semua part yang nempel di head)
+-- ============================================================
+local HeadlessWatch = {}
+local HeadlessHidden = {} -- [part] = LocalTransparencyModifier asli
+
+local function hidePartDeep(part)
+    if not part or not part:IsA("BasePart") then return end
+    if HeadlessHidden[part] == nil then
+        HeadlessHidden[part] = part.LocalTransparencyModifier
+    end
+    part.LocalTransparencyModifier = 1
+    part.Transparency = 1
+end
+
+local function hideHeadNow(char)
+    if not char then return end
     local head = findHead(char)
-    if not head then return end
-    head.Transparency = 1
-    head.LocalTransparencyModifier = 1
-    local face = head:FindFirstChild("face")
-    if face then face.Transparency = 1 end
-    local mesh = head:FindFirstChildOfClass("SpecialMesh")
-    if mesh then mesh.Scale = Vector3.new(0, 0, 0) end
+    if head then
+        if not HeadlessWatch[head] then
+            HeadlessWatch[head] = true
+            track(head:GetPropertyChangedSignal("Transparency"):Connect(function()
+                head.Transparency = 1
+                head.LocalTransparencyModifier = 1
+            end))
+            track(head:GetPropertyChangedSignal("LocalTransparencyModifier"):Connect(function()
+                head.LocalTransparencyModifier = 1
+            end))
+        end
+        hidePartDeep(head)
+        for _, d in ipairs(head:GetChildren()) do
+            if (d:IsA("Decal") or d:IsA("Texture")) and d.Name:lower():find("face") then
+                if d:GetAttribute("HanzFaceT") == nil then
+                    d:SetAttribute("HanzFaceT", d.Transparency)
+                end
+                d.Transparency = 1
+            end
+        end
+        local mesh = head:FindFirstChildOfClass("SpecialMesh")
+        if mesh then
+            if head:GetAttribute("HanzMeshS") == nil then
+                head:SetAttribute("HanzMeshS", mesh.Scale)
+            end
+            mesh.Scale = Vector3.new(0, 0, 0)
+        end
+        -- SEMUA part yang di-weld ke head ikut di-hide:
+        -- custom mesh head, rambut, topi bawaan game
+        for _, d in ipairs(char:GetDescendants()) do
+            if (d:IsA("Weld") or d:IsA("Motor6D") or d:IsA("Glue"))
+                and d.Part0 == head and d.Part1 and d.Part1:IsA("BasePart") then
+                hidePartDeep(d.Part1)
+            end
+        end
+    end
 end
 
 local function showHead(char)
+    if not char then return end
     local head = findHead(char)
-    if not head then return end
-    head.Transparency = 0
-    head.LocalTransparencyModifier = 0
-    local face = head:FindFirstChild("face")
-    if face then face.Transparency = 0 end
+    if head then
+        head.Transparency = 0
+        for _, d in ipairs(head:GetChildren()) do
+            if (d:IsA("Decal") or d:IsA("Texture")) and d.Name:lower():find("face") then
+                local t = d:GetAttribute("HanzFaceT")
+                if t ~= nil then d.Transparency = t end
+            end
+        end
+        local mesh = head:FindFirstChildOfClass("SpecialMesh")
+        if mesh then
+            local s = head:GetAttribute("HanzMeshS")
+            if s then mesh.Scale = Vector3.new(s.X, s.Y, s.Z) end
+        end
+    end
+    for p, orig in pairs(HeadlessHidden) do
+        if p and p.Parent then
+            p.LocalTransparencyModifier = orig
+            p.Transparency = 0
+        end
+    end
+    HeadlessHidden = {}
 end
 
 local function updateStatus(text)
@@ -405,18 +624,13 @@ local function updateStatusUI()
     end
 end
 
--- ============================================================
--- POSISI: CFRAME-FOLLOW (tanpa Weld sama sekali)
--- offsetCF = posisi aksesoris relatif ke part target, dihitung
--- dari rootRel (tahan ganti rig R6/R15 & karakter gerak)
--- ============================================================
 local function cleanComponents(t)
     if type(t) ~= "table" then return nil end
     local out = {}
     for i = 1, 12 do
         local v = tonumber(t[i]) or 0
         if v ~= v or v == math.huge or v == -math.huge then
-            v = 0 -- NaN / inf
+            v = 0
         end
         if math.abs(v) > 1e6 then
             v = 0
@@ -426,16 +640,34 @@ local function cleanComponents(t)
     return out
 end
 
+-- offset mount di atas kepala VISUAL, dihitung dari part asli
+-- (bukan angka tebakan) — aman di rig apapun termasuk R6 mentah + mesh
+local function topHeadOffset(targetPart, handleAtt)
+    local halfY = visualHalfY(targetPart)
+    local lift = math.max(targetPart.Size.Y * 0.04, 0.03)
+    return CFrame.new(0, halfY + lift, 0) * handleAtt.CFrame:Inverse()
+end
+
 local function computeOffset(targetPart, char, data)
     if not targetPart or not char then return nil end
-
+    if data.topMount and data._handle then
+        local handleAtt = data._handle:FindFirstChildOfClass("Attachment")
+        local ud = CFrame.new(0, 0, 0)
+        if data.userDelta then
+            local udc = cleanComponents(data.userDelta)
+            if udc then ud = CFrame.new(table.unpack(udc)) end
+        end
+        if handleAtt then
+            return topHeadOffset(targetPart, handleAtt) * ud
+        end
+        return ud
+    end
     local c1 = nil
     if data.c1 then
         local c1c = cleanComponents(data.c1)
         if c1c then c1 = CFrame.new(table.unpack(c1c)) end
     end
     if not c1 then c1 = CFrame.new(0, 0, 0) end
-
     local desiredWorld
     if data.rootRel then
         local rc = cleanComponents(data.rootRel)
@@ -447,44 +679,100 @@ local function computeOffset(targetPart, char, data)
         if not c0c then return nil end
         desiredWorld = targetPart.CFrame * CFrame.new(table.unpack(c0c)) * c1:Inverse()
     else
-        -- Posisi awal: cocokkan attachment bawaan aksesoris
         local handle = data._handle
-        if handle then
-            local handleAtt = handle:FindFirstChildOfClass("Attachment")
-            if handleAtt then
-                local targetAtt = targetPart:FindFirstChild(handleAtt.Name)
-                if not targetAtt then
-                    for _, d in ipairs(targetPart:GetDescendants()) do
-                        if d:IsA("Attachment") and d.Name == handleAtt.Name then
-                            targetAtt = d
-                            break
-                        end
-                    end
-                end
-                if targetAtt then
-                    desiredWorld = targetPart.CFrame * targetAtt.CFrame * handleAtt.CFrame:Inverse()
-                else
-                    desiredWorld = targetPart.CFrame * handleAtt.CFrame
+        local handleAtt = handle and handle:FindFirstChildOfClass("Attachment") or nil
+        if not handleAtt then
+            -- item jadul tanpa attachment: weld klasik di origin part
+            return CFrame.new(0, 0, 0)
+        end
+        local targetAtt = targetPart:FindFirstChild(handleAtt.Name)
+        if not targetAtt then
+            for _, d in ipairs(targetPart:GetDescendants()) do
+                if d:IsA("Attachment") and d.Name == handleAtt.Name then
+                    targetAtt = d
+                    break
                 end
             end
         end
-        if not desiredWorld then
-            desiredWorld = targetPart.CFrame * CFrame.new(0, 0.5, 0)
+        if targetAtt then
+            -- rig game punya attachment asli → percaya (lobby game lewat sini)
+            return targetAtt.CFrame * handleAtt.CFrame:Inverse()
         end
+        -- rig game NGGAK punya attachment → mount di atas kepala visual
+        local role = ATTACH_TO_PART[handleAtt.Name] or heuristicRole(handleAtt.Name) or partRoleOf(targetPart)
+        if role == "Head" then
+            return topHeadOffset(targetPart, handleAtt)
+        end
+        return CFrame.new(0, 0, 0)
     end
-
-    -- handle.CF = part0.CF * offset  →  offset = part0.CF:Inverse() * desiredWorld * c1:Inverse()
     return targetPart.CFrame:Inverse() * desiredWorld * c1:Inverse()
 end
 
+local function findTargetPart(char, item, handle, forceTarget)
+    if forceTarget then
+        local p = findPartByRole(char, forceTarget)
+        if p then return p, p.Name end
+    end
+
+    local handleAtt = handle and handle:FindFirstChildOfClass("Attachment") or nil
+    if handleAtt then
+        local charAtt = char:FindFirstChild(handleAtt.Name, true)
+        if charAtt and charAtt:IsA("Attachment") and charAtt.Parent and charAtt.Parent:IsA("BasePart") then
+            return charAtt.Parent, charAtt.Parent.Name
+        end
+        local role = ATTACH_TO_PART[handleAtt.Name] or heuristicRole(handleAtt.Name)
+        if role then
+            local p = findPartByRole(char, role)
+            if p then return p, p.Name end
+        end
+    end
+
+    if item:IsA("Accessory") then
+        local ok, accType = pcall(function() return item.AccessoryType end)
+        if ok and accType then
+            if accType == Enum.AccessoryType.Hat
+                or accType == Enum.AccessoryType.Hair
+                or accType == Enum.AccessoryType.Face
+                or accType == Enum.AccessoryType.Neck
+                or accType == Enum.AccessoryType.Head then
+                local head = findHead(char)
+                if head then return head, head.Name end
+            elseif accType == Enum.AccessoryType.Waist then
+                local p = findPartByRole(char, "LowerTorso")
+                if p then return p, p.Name end
+            else
+                local torso = findTorso(char)
+                if torso then return torso, torso.Name end
+            end
+        end
+    end
+
+    local head = findHead(char)
+    if head then return head, head.Name end
+    local torso = findTorso(char)
+    if torso then return torso, torso.Name end
+    return nil, "Unknown"
+end
+
 local function snapshotAccessory(acc)
+    if acc.topMount then
+        return {
+            id = acc.id,
+            targetName = acc.targetName,
+            topMount = true,
+            userDelta = {acc.userDelta:GetComponents()},
+            scale = acc.scaleComp,
+            forceTarget = acc.forceTarget,
+        }
+    end
     return {
         id = acc.id,
         targetName = acc.targetName,
-        c0 = nil,
+        c0 = acc.offsetCF and {acc.offsetCF:GetComponents()} or nil,
         c1 = acc.c1Comp,
         rootRel = acc.rootRelComp,
         scale = acc.scaleComp,
+        forceTarget = acc.forceTarget,
     }
 end
 
@@ -514,51 +802,17 @@ local function applyScale(part, scaleTable)
     end
 end
 
-local function findTargetPart(char, item, handle)
-    if handle then
-        local handleAtt = handle:FindFirstChildOfClass("Attachment")
-        if handleAtt then
-            local charAtt = char:FindFirstChild(handleAtt.Name, true)
-            if charAtt and charAtt:IsA("Attachment") and charAtt.Parent and charAtt.Parent:IsA("BasePart") then
-                return charAtt.Parent, charAtt.Parent.Name
-            end
-        end
-    end
-
-    if item:IsA("Accessory") then
-        local ok, accType = pcall(function() return item.AccessoryType end)
-        if ok and accType then
-            if accType == Enum.AccessoryType.Hat
-                or accType == Enum.AccessoryType.Hair
-                or accType == Enum.AccessoryType.Face
-                or accType == Enum.AccessoryType.Neck
-                or accType == Enum.AccessoryType.Head then
-                local head = findHead(char)
-                if head then return head, head.Name end
-            else
-                local torso = findTorso(char)
-                if torso then return torso, torso.Name end
-            end
-        end
-    end
-
-    local torso = findTorso(char)
-    if torso then return torso, torso.Name end
-    return nil, "Unknown"
-end
-
 local function prepPart(part)
     part.CanCollide = false
     part.CanQuery = false
     part.CanTouch = false
     part.Massless = true
-    part.Anchored = true -- posisi dikendaliin manual tiap frame
+    part.Anchored = true
 end
 
 local function registerAccessory(item, part, targetPart, targetName, char, data)
     data._handle = part
     local offset = computeOffset(targetPart, char, data)
-
     local acc = {
         id = tostring(data.id),
         model = item,
@@ -568,16 +822,21 @@ local function registerAccessory(item, part, targetPart, targetName, char, data)
         offsetCF = offset,
         c1Comp = data.c1 and cleanComponents(data.c1) or nil,
         rootRelComp = data.rootRel and cleanComponents(data.rootRel) or nil,
-        scaleComp = data.scale or nil,
+        scaleComp = data.scale and {tonumber(data.scale[1]) or 1, tonumber(data.scale[2]) or 1, tonumber(data.scale[3]) or 1} or nil,
         baseTransparency = part.Transparency,
+        forceTarget = data.forceTarget,
+        topMount = data.topMount and true or false,
+        userDelta = CFrame.new(0, 0, 0),
+        handleAtt = part:FindFirstChildOfClass("Attachment"),
     }
+    if data.userDelta then
+        local udc = cleanComponents(data.userDelta)
+        if udc then acc.userDelta = CFrame.new(table.unpack(udc)) end
+    end
     table.insert(State.active, acc)
-
     if offset then
         part.CFrame = targetPart.CFrame * offset
     end
-
-    -- Kalau data posisi ada tapi root belum siap, coba ulang sebentar
     if not offset and (data.rootRel or data.c0) then
         task.delay(0.5, function()
             if not LoopsRunning then return end
@@ -598,18 +857,29 @@ local function processItem(item, char, data)
     if item:IsA("Accessory") or item:IsA("Hat") then
         local handle = item:FindFirstChild("Handle")
         if not handle then return end
-        local targetPart, targetName = findTargetPart(char, item, handle)
+        local targetPart, targetName = findTargetPart(char, item, handle, data.forceTarget)
         if not targetPart then
             targetPart = findTorso(char)
             targetName = targetPart and targetPart.Name or "Torso"
         end
         if not targetPart then return end
+        -- kalau rig game nggak punya attachment pasangan & targetnya kepala
+        -- → pakai mode topMount (posisi dihitung ulang tiap frame)
+        if not data.topMount and not data.c0 and not data.rootRel then
+            local handleAtt = handle:FindFirstChildOfClass("Attachment")
+            if handleAtt then
+                local hasMatch = char:FindFirstChild(handleAtt.Name, true) ~= nil
+                local role = ATTACH_TO_PART[handleAtt.Name] or heuristicRole(handleAtt.Name)
+                if not hasMatch and (role == "Head" or (role == nil and targetName:lower():find("head"))) then
+                    data.topMount = true
+                end
+            end
+        end
         prepPart(handle)
         item:SetAttribute("HanzAcc", true)
         item.Parent = AccHolder
         registerAccessory(item, handle, targetPart, targetName, char, data)
         if data.scale then applyScale(handle, data.scale) end
-
     elseif item:IsA("BasePart") or item:IsA("MeshPart") then
         prepPart(item)
         item:SetAttribute("HanzAcc", true)
@@ -618,7 +888,6 @@ local function processItem(item, char, data)
         if not targetPart then return end
         registerAccessory(item, item, targetPart, targetPart.Name, char, data)
         if data.scale then applyScale(item, data.scale) end
-
     elseif item:IsA("Model") or item:IsA("Folder") then
         for _, child in ipairs(item:GetChildren()) do
             processItem(child, char, data)
@@ -632,10 +901,8 @@ local function spawnAccessory(data, char)
         updateStatus("Gagal: karakter nggak ketemu")
         return false
     end
-
     local numId = tonumber(data.id)
     if not numId then return false end
-
     local objects
     local ok = pcall(function()
         objects = game:GetObjects("rbxassetid://" .. tostring(numId))
@@ -650,7 +917,6 @@ local function spawnAccessory(data, char)
         updateStatus("Gagal load ID: " .. tostring(numId))
         return false
     end
-
     local before = #State.active
     for _, obj in ipairs(objects) do
         processItem(obj, char, data)
@@ -658,36 +924,356 @@ local function spawnAccessory(data, char)
     return #State.active > before
 end
 
--- ============================================================
--- FOLLOW LOOP: posisi ditempel tiap frame, tanpa weld
--- ============================================================
-track(RunService.RenderStepped:Connect(function()
-    if not LoopsRunning then return end
+local function say(model, text)
+    if not model then return false end
+    local ok = pcall(function()
+        TextChatService:DisplayBubble(model, text)
+    end)
+    if not ok then
+        pcall(function()
+            local head = model:FindFirstChild("Head")
+                or model:FindFirstChildOfClass("BasePart")
+            if head then
+                TextChatService:DisplayBubble(head, text)
+            end
+        end)
+    end
+    return true
+end
 
+local ChatTarget = "KITA"
+
+track(ChatTargetBtn.MouseButton1Click:Connect(function()
+    if ChatTarget == "KITA" then
+        ChatTarget = "CLONE"
+        ChatTargetBtn.Text = "TARGET: CLONE"
+        ChatTargetBtn.TextColor3 = Color3.fromRGB(255, 180, 80)
+    else
+        ChatTarget = "KITA"
+        ChatTargetBtn.Text = "TARGET: KITA"
+        ChatTargetBtn.TextColor3 = Color3.fromRGB(150, 180, 255)
+    end
+end))
+
+track(ChatSendBtn.MouseButton1Click:Connect(function()
+    local text = ChatBox.Text
+    if text == "" then return end
+    if #text > 200 then text = text:sub(1, 200) end
+    local targetModel
+    if ChatTarget == "CLONE" then
+        targetModel = CloneState.model
+        if not targetModel then
+            updateStatus("Chat gagal: clone nggak ada")
+            return
+        end
+    else
+        targetModel = getChar()
+    end
+    if say(targetModel, text) then
+        ChatBox.Text = ""
+    else
+        updateStatus("Chat gagal")
+    end
+end))
+
+-- ============================================================
+-- CLONE + CONTROL + GANTI EMOTE (semua emote R15)
+-- ============================================================
+local function removeClone()
+    CloneState.accFollow = nil
+    CloneState.animator = nil
+    if CloneState.model then
+        pcall(function() CloneState.model:Destroy() end)
+        CloneState.model = nil
+    end
+    for _, m in ipairs(workspace:GetChildren()) do
+        if m.Name:sub(1, 9) == "HanzClone" then
+            pcall(function() m:Destroy() end)
+        end
+    end
+end
+
+local function getCloneAnimator(createIfMissing)
+    local model = CloneState.model
+    if not model then return nil end
+    local hum = model:FindFirstChildOfClass("Humanoid")
+    if not hum then return nil end
+    local animator = hum:FindFirstChildOfClass("Animator")
+    if not animator and createIfMissing then
+        animator = Instance.new("Animator")
+        animator.Parent = hum
+    end
+    CloneState.animator = animator
+    return animator
+end
+
+local function applyTracksToClone(playing)
+    local animator = getCloneAnimator(true)
+    if not animator then return false end
+    for _, t in ipairs(animator:GetPlayingAnimationTracks()) do
+        pcall(function() t:Stop(0) end)
+    end
+    for _, p in ipairs(playing) do
+        pcall(function()
+            local a = Instance.new("Animation")
+            a.AnimationId = p.id
+            local track = animator:LoadAnimation(a)
+            track.Looped = p.looped
+            track:Play(0)
+            track.TimePosition = p.time
+            track.Speed = p.speed
+        end)
+    end
+    return true
+end
+
+local function capturePlayingTracks()
+    local found = {}
     local char = getChar()
+    local hum0 = char and char:FindFirstChildOfClass("Humanoid")
+    local anim0 = hum0 and hum0:FindFirstChildOfClass("Animator")
+    if not anim0 then return found end
+    for _, t in ipairs(anim0:GetPlayingAnimationTracks()) do
+        if t.Animation and t.IsPlaying then
+            table.insert(found, {
+                id = t.Animation.AnimationId,
+                time = t.TimePosition,
+                speed = t.Speed,
+                looped = t.Looped,
+            })
+        end
+    end
+    return found
+end
+
+local function snapshotClone()
+    removeClone()
+    updateStatus("Clone: cari karakter...")
+    local char = getChar()
+    if not char then
+        updateStatus("Clone gagal: karakter nggak ketemu")
+        return
+    end
+
+    local playing = capturePlayingTracks()
+
+    local nameText = CloneNameBox.Text:gsub("^%s+", ""):gsub("%s+$", "")
+    if nameText == "" then
+        nameText = LocalPlayer.DisplayName
+    end
+
+    char.Archivable = true
+    local ok, model = pcall(function() return char:Clone() end)
+    if not ok or not model then
+        updateStatus("Clone gagal: gagal duplikasi karakter")
+        return
+    end
+
+    model.Name = "HanzClone_" .. nameText
+    model:SetAttribute("HanzAcc", true)
+    model.Parent = workspace
+
+    for _, d in ipairs(model:GetDescendants()) do
+        if d:IsA("Script") or d:IsA("LocalScript") or d:IsA("ModuleScript") or d:IsA("Animator") then
+            pcall(function() d:Destroy() end)
+        elseif d:IsA("BasePart") then
+            d.CanCollide = false
+            d.CanQuery = false
+            d.CanTouch = false
+        end
+    end
+
+    local hum = model:FindFirstChildOfClass("Humanoid")
+    if hum then
+        hum.DisplayDistanceType = Enum.HumanoidDisplayDistanceType.Viewer
+        hum.NameDisplayDistance = 1000
+        hum.HealthDisplayDistance = 0
+        hum.DisplayName = nameText
+    end
+
+    local hrp = model:FindFirstChild("HumanoidRootPart")
+    if hrp then hrp.Anchored = true end
+
+    applyTracksToClone(playing)
+
+    CloneState.accFollow = {}
+    local accCloned = 0
+    for _, acc in ipairs(State.active) do
+        if acc.part and acc.part.Parent and acc.offsetCF then
+            local okC, accModel2 = pcall(function() return acc.model:Clone() end)
+            if okC and accModel2 then
+                local handle2
+                if accModel2:IsA("Accessory") or accModel2:IsA("Hat") then
+                    handle2 = accModel2:FindFirstChild("Handle")
+                elseif accModel2:IsA("BasePart") or accModel2:IsA("MeshPart") then
+                    handle2 = accModel2
+                else
+                    for _, d in ipairs(accModel2:GetDescendants()) do
+                        if d:IsA("BasePart") or d:IsA("MeshPart") then
+                            handle2 = d
+                            break
+                        end
+                    end
+                end
+
+                if handle2 then
+                    local clonePart = model:FindFirstChild(acc.targetName or "", true)
+                    if not (clonePart and clonePart:IsA("BasePart")) then
+                        if acc.targetName and acc.targetName:lower():find("head") then
+                            clonePart = findHead(model)
+                        else
+                            clonePart = findTorso(model)
+                        end
+                    end
+
+                    if clonePart then
+                        handle2.Anchored = true
+                        handle2.CanCollide = false
+                        handle2.CanQuery = false
+                        handle2.CanTouch = false
+                        handle2.Massless = true
+                        if acc.scaleComp then
+                            pcall(function() applyScale(handle2, acc.scaleComp) end)
+                        end
+                        accModel2:SetAttribute("HanzAcc", true)
+                        accModel2.Parent = model
+                        table.insert(CloneState.accFollow, {
+                            handle = handle2,
+                            part = clonePart,
+                            relCF = acc.offsetCF,
+                        })
+                        accCloned = accCloned + 1
+                    end
+                end
+            end
+        end
+    end
+
+    CloneState.model = model
+    updateStatus(string.format("Clone: %d anim | %d aksesoris | nama: %s",
+        #playing, accCloned, nameText))
+end
+
+track(CloneBtn.MouseButton1Click:Connect(snapshotClone))
+track(RemoveCloneBtn.MouseButton1Click:Connect(function()
+    removeClone()
+    updateStatus("Clone dihapus")
+end))
+
+track(UserInputService.InputBegan:Connect(function(input, gameProcessed)
+    if not CloneControl.enabled then return end
+    if gameProcessed then return end
+    if input.UserInputType ~= Enum.UserInputType.MouseButton1
+        and input.UserInputType ~= Enum.UserInputType.Touch then
+        return
+    end
+    local model = CloneState.model
+    if not model then return end
+    local hrp = model:FindFirstChild("HumanoidRootPart")
+    local cam = workspace.CurrentCamera
+    if not hrp or not cam then return end
+
+    local ray = cam:ScreenPointToRay(input.Position.X, input.Position.Y)
+    local params = RaycastParams.new()
+    params.FilterType = Enum.RaycastFilterType.Exclude
+    params.FilterDescendantsInstances = { model, LocalPlayer.Character }
+    local result = workspace:Raycast(ray.Origin, ray.Direction * 500, params)
+    local targetPos
+    if result then
+        targetPos = result.Position + Vector3.new(0, 3, 0)
+    else
+        targetPos = ray.Origin + ray.Direction * 15
+    end
+    hrp.CFrame = CFrame.new(targetPos) * hrp.CFrame.Rotation
+end))
+
+track(ControlBtn.MouseButton1Click:Connect(function()
+    CloneControl.enabled = not CloneControl.enabled
+    ControlBtn.Text = CloneControl.enabled and "CONTROL: ON" or "CONTROL: OFF"
+    ControlBtn.TextColor3 = CloneControl.enabled and Color3.fromRGB(80, 255, 120) or Color3.fromRGB(255, 120, 80)
+    updateStatus(CloneControl.enabled and "CONTROL ON: tap map = clone pindah" or "CONTROL OFF")
+end))
+
+track(GantiEmoteBtn.MouseButton1Click:Connect(function()
+    if not CloneState.model then
+        updateStatus("Clone nggak ada")
+        return
+    end
+    local playing = capturePlayingTracks()
+    if #playing == 0 then
+        updateStatus("Nggak ada animasi yang lagi jalan")
+        return
+    end
+    applyTracksToClone(playing)
+    updateStatus("Clone ganti anim (" .. #playing .. " track)")
+end))
+
+-- LOOP UTAMA: aksesoris ngikut + headless
+-- topMount = posisi dihitung ulang tiap frame → kebal respawn/resize/ganti rig
+track(RunService.RenderStepped:Connect(function(dt)
+    if not LoopsRunning then return end
+    local char = getCharFast()
+    if State.headless then
+        hideHeadNow(char)
+    end
     local hum = char and char:FindFirstChildOfClass("Humanoid")
     local alive = char ~= nil and hum ~= nil and hum.Health > 0
         and hum:GetState() ~= Enum.HumanoidStateType.Dead
-
-    if State.headless then
-        hideHead(char)
-    end
-
     for _, acc in ipairs(State.active) do
         local part = acc.part
         if part and part.Parent then
             if not alive then
-                part.Transparency = 1 -- sembunyi pas mati/spectate
+                part.Transparency = 1
             else
                 if part.Transparency ~= acc.baseTransparency then
                     part.Transparency = acc.baseTransparency
                 end
                 local tp = acc.targetPart
-                if tp and tp.Parent and acc.offsetCF then
-                    part.CFrame = tp.CFrame * acc.offsetCF
+                -- self-heal: part target diganti game → cari lagi
+                if (not tp or not tp.Parent) and char then
+                    if acc.forceTarget then
+                        tp = findPartByRole(char, acc.forceTarget)
+                    end
+                    if not tp and acc.targetName then
+                        if acc.targetName:lower():find("head") then
+                            tp = findHead(char)
+                        else
+                            tp = findTorso(char)
+                        end
+                    end
+                    if not tp then
+                        tp = findHead(char) or findTorso(char)
+                    end
+                    if tp then
+                        acc.targetPart = tp
+                        acc.targetName = tp.Name
+                    end
+                end
+                if tp and tp.Parent then
+                    if acc.topMount and acc.handleAtt then
+                        part.CFrame = tp.CFrame * topHeadOffset(tp, acc.handleAtt) * acc.userDelta
+                        acc.offsetCF = tp.CFrame:Inverse() * part.CFrame
+                    elseif acc.offsetCF then
+                        part.CFrame = tp.CFrame * acc.offsetCF
+                    end
                 end
             end
         end
+    end
+
+    if CloneState.accFollow then
+        for _, a in ipairs(CloneState.accFollow) do
+            if a.handle.Parent and a.part.Parent then
+                a.handle.CFrame = a.part.CFrame * a.relCF
+            end
+        end
+    end
+end))
+
+track(RunService.Heartbeat:Connect(function()
+    if not LoopsRunning then return end
+    if State.headless then
+        hideHeadNow(getCharFast())
     end
 end))
 
@@ -699,20 +1285,16 @@ local function restoreAll(char)
     if tick() - lastRestore < 1.5 then return end
     restoreRunning = true
     lastRestore = tick()
-
     for _, acc in ipairs(State.active) do
         pcall(function() if acc.model then acc.model:Destroy() end end)
     end
     State.active = {}
     State.selected = 0
-
-    if State.headless then hideHead(char) end
-
+    if State.headless then hideHeadNow(char) end
     local backup = {}
     for i, v in ipairs(State.persist) do
         backup[i] = v
     end
-
     for _, item in ipairs(backup) do
         local success = false
         for attempt = 1, 3 do
@@ -724,13 +1306,11 @@ local function restoreAll(char)
         end
         task.wait(0.15)
     end
-
     State.selected = #State.active
     updateStatusUI()
     restoreRunning = false
 end
 
--- Rebind: ganti target part ke rig baru TANPA re-download (posisi tetap akurat)
 local function rebindAccessories(char)
     if #State.active == 0 then return true end
     for _, acc in ipairs(State.active) do
@@ -740,21 +1320,31 @@ local function rebindAccessories(char)
     end
     for _, acc in ipairs(State.active) do
         local newTarget
-        if acc.targetName and acc.targetName:lower():find("head") then
-            newTarget = findHead(char)
-        else
-            newTarget = findTorso(char)
+        if acc.forceTarget then
+            newTarget = findPartByRole(char, acc.forceTarget)
+        end
+        if not newTarget then
+            if acc.targetName and acc.targetName:lower():find("head") then
+                newTarget = findHead(char)
+            else
+                newTarget = findTorso(char)
+            end
         end
         if not newTarget then
             newTarget = findTorso(char) or findHead(char)
         end
         if not newTarget then return false end
-
-        local data = {
-            c1 = acc.c1Comp,
-            rootRel = acc.rootRelComp,
-            _handle = acc.part,
-        }
+        local data
+        if acc.topMount then
+            data = { topMount = true, userDelta = {acc.userDelta:GetComponents()}, _handle = acc.part }
+        else
+            data = {
+                c0 = acc.offsetCF and {acc.offsetCF:GetComponents()} or nil,
+                c1 = acc.c1Comp,
+                rootRel = acc.rootRelComp,
+                _handle = acc.part,
+            }
+        end
         local offset = computeOffset(newTarget, char, data)
         if offset then
             acc.targetPart = newTarget
@@ -773,7 +1363,6 @@ local CORE_PART_NAMES = {
 
 local function hookCharacter(char)
     State.currentChar = char
-
     track(char.DescendantAdded:Connect(function(d)
         if d:IsA("BasePart") and d.Parent == char and CORE_PART_NAMES[d.Name] then
             task.wait(0.6)
@@ -789,7 +1378,6 @@ local function hookCharacter(char)
             end
         end
     end))
-
     task.spawn(function()
         if not waitForRig(char, 15) then return end
         task.wait(0.3)
@@ -816,7 +1404,6 @@ task.spawn(function()
     end
 end)
 
--- Watchdog: part musnah → respawn; target hilang → rebind
 do
     local lastCheck = 0
     track(RunService.Heartbeat:Connect(function()
@@ -825,11 +1412,9 @@ do
         local now = tick()
         if now - lastCheck < 1 then return end
         lastCheck = now
-
         if #State.persist == 0 then return end
         local char = getChar()
         if not char then return end
-
         local needRespawn = false
         local needRebind = false
         for _, acc in ipairs(State.active) do
@@ -841,11 +1426,9 @@ do
                 needRebind = true
             end
         end
-
         if #State.active < #State.persist then
             needRespawn = true
         end
-
         if needRespawn then
             if not restoreRunning then
                 restoreAll(char)
@@ -887,7 +1470,6 @@ local function refreshPresetListUI()
         f.BorderSizePixel = 0
         f.Parent = PresetScroll
         Instance.new("UICorner", f).CornerRadius = UDim.new(0, 4)
-
         local loadBtn = Instance.new("TextButton")
         loadBtn.Size = UDim2.new(0.68, 0, 1, 0)
         loadBtn.BackgroundTransparency = 1
@@ -898,7 +1480,6 @@ local function refreshPresetListUI()
         loadBtn.TextXAlignment = Enum.TextXAlignment.Left
         loadBtn.Parent = f
         track(loadBtn.MouseButton1Click:Connect(function()
-            -- LOAD ATOMIK: watchdog & restore dikunci sampai selesai
             State.loadingPreset = true
             for _, acc in ipairs(State.active) do
                 pcall(function() if acc.model then acc.model:Destroy() end end)
@@ -914,7 +1495,6 @@ local function refreshPresetListUI()
             State.loadingPreset = false
             updateStatusUI()
         end))
-
         local delBtn = Instance.new("TextButton")
         delBtn.Size = UDim2.new(0.28, 0, 0.8, 0)
         delBtn.Position = UDim2.new(0.70, 0, 0.1, 0)
@@ -1005,7 +1585,6 @@ local function resetAll()
     State.persist = {}
     State.selected = 0
     State.loadingPreset = false
-
     if State.headless then
         State.headless = false
         HeadlessBtn.Text = "HEADLESS: OFF"
@@ -1020,7 +1599,7 @@ track(HeadlessBtn.MouseButton1Click:Connect(function()
     HeadlessBtn.Text = State.headless and "HEADLESS: ON" or "HEADLESS: OFF"
     HeadlessBtn.TextColor3 = State.headless and Color3.fromRGB(80, 255, 120) or Color3.fromRGB(255, 80, 80)
     if State.headless then
-        hideHead(getChar())
+        hideHeadNow(getChar())
     else
         showHead(getChar())
     end
@@ -1077,21 +1656,32 @@ local function getSelected()
     return nil
 end
 
--- Posisi digeser = offsetCF dikali perubahan lokal, lalu persist
 local function applyC0Offset(dx, dy, dz)
     local acc = getSelected()
-    if acc and acc.offsetCF then
+    if not acc then return end
+    if acc.topMount then
+        acc.userDelta = acc.userDelta * CFrame.new(dx, dy, dz)
+        if acc.targetPart and acc.targetPart.Parent and acc.handleAtt then
+            acc.offsetCF = topHeadOffset(acc.targetPart, acc.handleAtt) * acc.userDelta
+        end
+    elseif acc.offsetCF then
         acc.offsetCF = acc.offsetCF * CFrame.new(dx, dy, dz)
-        rebuildPersist()
     end
+    rebuildPersist()
 end
 
 local function applyRotation(rx, ry, rz)
     local acc = getSelected()
-    if acc and acc.offsetCF then
+    if not acc then return end
+    if acc.topMount then
+        acc.userDelta = acc.userDelta * CFrame.Angles(rx, ry, rz)
+        if acc.targetPart and acc.targetPart.Parent and acc.handleAtt then
+            acc.offsetCF = topHeadOffset(acc.targetPart, acc.handleAtt) * acc.userDelta
+        end
+    elseif acc.offsetCF then
         acc.offsetCF = acc.offsetCF * CFrame.Angles(rx, ry, rz)
-        rebuildPersist()
     end
+    rebuildPersist()
 end
 
 track(XPlusBtn.MouseButton1Click:Connect(function() applyC0Offset(0.1, 0, 0) end))
@@ -1142,6 +1732,52 @@ track(DeleteAccBtn.MouseButton1Click:Connect(function()
     end
 end))
 
+-- TARGET PART: maksa aksesoris terpilih nempel di part tertentu
+local TARGET_MODES = {"AUTO", "HEAD", "TORSO", "HRP"}
+local targetModeIdx = 1
+
+track(TargetAccBtn.MouseButton1Click:Connect(function()
+    local acc = getSelected()
+    if not acc then
+        updateStatus("Pilih aksesoris dulu (PREV/NEXT)")
+        return
+    end
+    targetModeIdx = targetModeIdx % #TARGET_MODES + 1
+    local mode = TARGET_MODES[targetModeIdx]
+    TargetAccBtn.Text = "TARGET PART: " .. mode
+
+    local char = getChar()
+    if not char then return end
+    acc.forceTarget = (mode ~= "AUTO") and mode or nil
+
+    local newTarget
+    if acc.forceTarget then
+        newTarget = findPartByRole(char, acc.forceTarget)
+    end
+    if not newTarget then
+        newTarget = findTargetPart(char, acc.model, acc.part, nil)
+    end
+    if newTarget then
+        acc.targetPart = newTarget
+        acc.targetName = newTarget.Name
+        if mode == "HEAD" then
+            acc.topMount = true
+            acc.handleAtt = acc.part:FindFirstChildOfClass("Attachment")
+            if acc.handleAtt then
+                acc.offsetCF = topHeadOffset(newTarget, acc.handleAtt) * acc.userDelta
+            end
+        else
+            acc.topMount = false
+            local offset = computeOffset(newTarget, char, { _handle = acc.part })
+            if offset then
+                acc.offsetCF = offset
+            end
+        end
+    end
+    rebuildPersist()
+    updateStatusUI()
+end))
+
 loadPresetsFromDisk()
 refreshCatalogUI()
 
@@ -1150,4 +1786,4 @@ if c then
     hookCharacter(c)
 end
 
-print("[Hanz] ultimate loaded | Character:", c and c.Name or "menunggu spawn")
+print("[Hanz] loaded | Character:", c and c.Name or "menunggu spawn")
